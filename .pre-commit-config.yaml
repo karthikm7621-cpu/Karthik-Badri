@@ -1,8 +1,3 @@
-# Install tooling before committing:
-#   python -m pip install --upgrade pre-commit black flake8
-#   npm install --save-dev eslint
-#   pre-commit install
-
 repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v4.5.0
@@ -14,22 +9,19 @@ repos:
     rev: 24.3.0
     hooks:
       - id: black
-        language_version: python3
+        files: \.(py)$
 
-  - repo: https://gitlab.com/pycqa/flake8
+  - repo: https://github.com/pycqa/flake8
     rev: 7.0.0
     hooks:
       - id: flake8
-        language_version: python3
-        additional_dependencies: [flake8]
+        files: \.(py)$
 
-  - repo: https://github.com/pre-commit/mirrors-eslint
-    rev: v9.0.0
+  - repo: local
     hooks:
       - id: eslint
-        name: eslint --fix
-        entry: eslint --fix
-        language: node
-        types: [javascript]
+        name: eslint
+        entry: npx eslint --fix --no-error-on-unmatched-pattern
+        language: system
         files: \.(js|jsx|ts|tsx)$
-        additional_dependencies: [eslint@9.0.0]
+        pass_filenames: true
