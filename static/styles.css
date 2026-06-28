@@ -213,6 +213,20 @@ button {
   background: rgba(15, 23, 42, 0.7);
 }
 
+/* Resume upload spinner */
+.spinner {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: 3px solid rgba(255,255,255,0.08);
+  border-top-color: var(--accent);
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
 @media (max-width: 700px) {
   .card__header {
     flex-direction: column;
