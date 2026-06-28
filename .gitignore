@@ -1,5 +1,8 @@
 venv/
+.venv/
 __pycache__/
-*.pyc
-ems.db
-.cache/
+*.db
+*.sqlite
+*.gguf
+.pytest_cache/
+.mypy_cache/
