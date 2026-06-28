@@ -55,6 +55,14 @@
   const submitExpenseBtn = document.getElementById("submit-expense-btn");
   const receiptFeedback = document.getElementById("receipt-feedback");
 
+  // Biometric UI
+  const startBiometricBtn = document.getElementById("start-biometric-btn");
+  const biometricContainer = document.getElementById("biometric-container");
+  const webcamVideo = document.getElementById("webcam");
+  const captureBiometricBtn = document.getElementById("capture-biometric-btn");
+  const biometricCanvas = document.getElementById("biometric-canvas");
+  let webcamStream = null;
+
   // HR Helpdesk UI
   const hrForm = document.getElementById("hr-form");
   const hrFeedback = document.getElementById("hr-feedback");
@@ -98,6 +106,16 @@
     const online = navigator.onLine;
     connectionStatus.className = `hero__status ${online ? "online" : "offline"}`;
     connectionStatus.textContent = online ? "Online and ready to sync." : "Offline mode active — changes will be queued locally.";
+    
+    if (startBiometricBtn) {
+      if (online) {
+        startBiometricBtn.disabled = false;
+        startBiometricBtn.title = "";
+      } else {
+        startBiometricBtn.disabled = true;
+        startBiometricBtn.title = "Biometric attendance logging requires a connection to the local authentication server.";
+      }
+    }
   }
 
   function renderEmployees() {
@@ -529,6 +547,78 @@
     await updateQueueCount();
   }
 
+  // Biometric Logic
+  async function startWebcam() {
+    if (!navigator.onLine) {
+      setFeedback(attendanceFeedback, "Biometric attendance logging requires a connection to the local authentication server.", "info");
+      return;
+    }
+    
+    try {
+      webcamStream = await navigator.mediaDevices.getUserMedia({ video: true });
+      webcamVideo.srcObject = webcamStream;
+      biometricContainer.classList.remove("hidden");
+      startBiometricBtn.classList.add("hidden");
+      setFeedback(attendanceFeedback, "Please look into the camera.", "info");
+    } catch (err) {
+      setFeedback(attendanceFeedback, "Webcam access denied or unavailable.", "info");
+      console.warn("Webcam error:", err);
+    }
+  }
+
+  function stopWebcam() {
+    if (webcamStream) {
+      webcamStream.getTracks().forEach((track) => track.stop());
+      webcamStream = null;
+    }
+    webcamVideo.srcObject = null;
+  }
+
+  async function captureAndVerifyFace() {
+    if (!webcamStream) return;
+    
+    const context = biometricCanvas.getContext("2d");
+    biometricCanvas.width = webcamVideo.videoWidth;
+    biometricCanvas.height = webcamVideo.videoHeight;
+    context.drawImage(webcamVideo, 0, 0, biometricCanvas.width, biometricCanvas.height);
+    
+    stopWebcam();
+    biometricContainer.classList.add("hidden");
+    startBiometricBtn.classList.remove("hidden");
+    
+    setFeedback(attendanceFeedback, "Verifying face...", "info");
+    
+    biometricCanvas.toBlob(async (blob) => {
+      if (!blob) {
+        setFeedback(attendanceFeedback, "Failed to capture image.", "info");
+        return;
+      }
+      
+      const formData = new FormData();
+      formData.append("employee_id", attendanceEmployee.value);
+      formData.append("image", blob, "face.jpg");
+      
+      try {
+        if (!navigator.onLine) throw new Error("offline");
+        const response = await fetch("/api/verify-attendance", { method: "POST", body: formData });
+        
+        if (!response.ok) {
+          const resData = await response.json().catch(() => ({}));
+          throw new Error(resData.error || "Verification failed");
+        }
+        
+        setFeedback(attendanceFeedback, "Face Verified! Attendance Logged.", "success");
+        attendanceForm.reset();
+        attendanceDate.value = new Date().toISOString().slice(0, 10);
+      } catch (err) {
+        setFeedback(attendanceFeedback, err.message === "offline" 
+          ? "Biometric attendance logging requires a connection to the local authentication server."
+          : `Verification failed: ${err.message}`, "info");
+      }
+      await updateQueueCount();
+    }, "image/jpeg", 0.9);
+  }
+
   // Audio Logic
   async function initAudioRecorder() {
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
@@ -639,6 +729,8 @@
     
     delegateForm.addEventListener("submit", handleDelegation);
     attendanceForm.addEventListener("submit", handleAttendanceSubmission);
+    if (startBiometricBtn) startBiometricBtn.addEventListener("click", startWebcam);
+    if (captureBiometricBtn) captureBiometricBtn.addEventListener("click", captureAndVerifyFace);
     leaveForm.addEventListener("submit", handleLeaveSubmission);
     if (resumeForm) resumeForm.addEventListener("submit", handleResumeSubmission);
     receiptFileInput.addEventListener("change", handleReceiptSelection);

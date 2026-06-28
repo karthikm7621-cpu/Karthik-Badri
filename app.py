@@ -106,6 +106,7 @@ class AttendanceRecord(db.Model):
     time_in = db.Column(db.DateTime, default=datetime.utcnow)
     time_out = db.Column(db.DateTime, nullable=True)
     source_image_path = db.Column(db.String(255))
+    verified_by = db.Column(db.String(50), nullable=True)
 
 
 class ExpenseReimbursement(db.Model):
@@ -425,6 +426,45 @@ def parse_hr_ticket(raw_text: str) -> Dict[str, Any]:
         }
 
 
+def verify_face(image_file: Any, employee_id: str) -> bool:
+    try:
+        import cv2
+        import face_recognition
+        import numpy as np
+    except ImportError:
+        return False
+
+    reference_path = os.path.join("static", "profiles", f"{employee_id}.jpg")
+    if not os.path.exists(reference_path):
+        return False
+
+    try:
+        ref_image = face_recognition.load_image_file(reference_path)
+        ref_encodings = face_recognition.face_encodings(ref_image)
+        if not ref_encodings:
+            return False
+
+        file_bytes = np.frombuffer(image_file.read(), np.uint8)
+        frame_image = cv2.imdecode(file_bytes, cv2.IMREAD_COLOR)
+        if frame_image is None:
+            return False
+
+        rgb_frame = cv2.cvtColor(frame_image, cv2.COLOR_BGR2RGB)
+        frame_encodings = face_recognition.face_encodings(rgb_frame)
+        if not frame_encodings:
+            return False
+
+        distances = face_recognition.face_distance(
+            ref_encodings, frame_encodings[0]
+        )
+        if len(distances) > 0 and distances[0] < 0.6:
+            return True
+
+        return False
+    except Exception:
+        return False
+
+
 def get_request_data() -> Dict[str, Any]:
     data = request.get_json(silent=True)
     if isinstance(data, dict):
@@ -503,6 +543,7 @@ def sync_attendance() -> Any:
     return jsonify({"message": "Attendance synced successfully"})
 
 
+<<<<<<< HEAD
 @app.route("/api/ask-policy", methods=["POST"])
 def ask_policy() -> Any:
     payload = request.get_json(silent=True) or {}
@@ -568,6 +609,38 @@ def ask_policy() -> Any:
                 "error": str(exc),
             }
         )
+=======
+@app.route("/api/verify-attendance", methods=["POST"])
+def verify_attendance() -> Any:
+    if "image" not in request.files:
+        return jsonify({"error": "No image provided"}), 400
+
+    image_file = request.files["image"]
+    employee_id = request.form.get("employee_id")
+    if not employee_id:
+        return jsonify({"error": "Missing employee_id"}), 400
+
+    if not verify_face(image_file, employee_id):
+        return (
+            jsonify({"error": "Face verification failed or no face detected"}),
+            400,
+        )
+
+    try:
+        emp_id_int = int(employee_id) if employee_id.isdigit() else 1
+    except ValueError:
+        emp_id_int = 1
+
+    record = AttendanceRecord(
+        employee_id=emp_id_int,
+        date=datetime.utcnow().date(),
+        verified_by="biometric",
+    )
+    db.session.add(record)
+    db.session.commit()
+
+    return jsonify({"status": "success", "message": "Attendance verified"})
+>>>>>>> d5d649b7b3d67c73b1ddd491104b25a06972b399
 
 
 @app.route("/api/submit-leave", methods=["POST"])
@@ -740,8 +813,15 @@ def upload_resume() -> Any:
         system_prompt = (
             "You are an HR data extractor. Read the following resume text. "
             "Extract the candidate's name, email, a list of core technical skills, "
+<<<<<<< HEAD
             "and total years of experience as an integer. Output ONLY valid JSON in this exact format: "
             '{"candidate_name": "...", "email": "...", "skills": ["..."], "years_of_experience": X}. '
+=======
+            "and total years of experience as an integer. "
+            "Output ONLY valid JSON in this exact format: "
+            '{"candidate_name": "...", "email": "...", '
+            '"skills": ["..."], "years_of_experience": X}. '
+>>>>>>> d5d649b7b3d67c73b1ddd491104b25a06972b399
             "No markdown, no conversational text."
         )
         prompt = f"{system_prompt}\n\nResume Text:\n{raw_text}\n\nJSON:"
