@@ -43,6 +43,11 @@
   const attendanceEmployee = document.getElementById("attendance-employee");
   const leaveEmployee = document.getElementById("leave-employee");
   const attendanceDate = document.getElementById("attendance-date");
+  const receiptEmployee = document.getElementById("receipt-employee");
+  const receiptFileInput = document.getElementById("receipt-file-input");
+  const receiptPreview = document.getElementById("receipt-preview");
+  const submitExpenseBtn = document.getElementById("submit-expense-btn");
+  const receiptFeedback = document.getElementById("receipt-feedback");
 
   // Audio UI
   let mediaRecorder = null;
@@ -56,6 +61,8 @@
   // State
   let currentUserRole = null;
   let currentUsername = null;
+  let currentReceiptBlob = null;
+  let currentReceiptPreviewUrl = null;
 
   function setFeedback(element, message, type) {
     element.className = `feedback ${type}`;
@@ -79,6 +86,7 @@
     employeeList.innerHTML = employeeMarkup;
     attendanceEmployee.innerHTML = employeeOptions;
     leaveEmployee.innerHTML = employeeOptions;
+    receiptEmployee.innerHTML = employeeOptions;
     delegateUserSelect.innerHTML = employeeOptions;
     attendanceDate.value = new Date().toISOString().slice(0, 10);
   }
@@ -161,8 +169,9 @@
 
     try {
       const response = await sendPayload("login", { username, password });
-      localStorage.setItem("ems_username", response.username || username);
-      localStorage.setItem("ems_role", response.role || "Employee");
+      const user = response.user || response;
+      localStorage.setItem("ems_username", user.username || username);
+      localStorage.setItem("ems_role", user.role || "Employee");
       checkAuth();
       loginForm.reset();
     } catch (err) {
@@ -209,7 +218,8 @@
     try {
       const res = await fetch("/api/pending-users");
       if (!res.ok) throw new Error("Failed to fetch pending users");
-      const users = await res.json();
+      const payload = await res.json();
+      const users = Array.isArray(payload.users) ? payload.users : payload;
       
       if (users.length === 0) {
         pendingUsersList.innerHTML = `<li style="justify-content: center; color: var(--muted);">No pending users</li>`;
@@ -299,6 +309,89 @@
         await queue.addToQueue("submit-leave", payload);
       }
       setFeedback(leaveFeedback, "Leave request saved for later sync.", "info");
+    }
+    await updateQueueCount();
+  }
+
+  function revokeReceiptPreview() {
+    if (currentReceiptPreviewUrl) {
+      URL.revokeObjectURL(currentReceiptPreviewUrl);
+      currentReceiptPreviewUrl = null;
+    }
+  }
+
+  async function compressImageToBlob(file) {
+    const imageUrl = URL.createObjectURL(file);
+    const image = new Image();
+
+    try {
+      await new Promise((resolve, reject) => {
+        image.onload = resolve;
+        image.onerror = () => reject(new Error("Image load failed"));
+        image.src = imageUrl;
+      });
+
+      const maxWidth = 1024;
+      const scale = Math.min(1, maxWidth / image.width);
+      const canvas = document.createElement("canvas");
+      canvas.width = Math.max(1, Math.round(image.width * scale));
+      canvas.height = Math.max(1, Math.round(image.height * scale));
+      const context = canvas.getContext("2d");
+      context.drawImage(image, 0, 0, canvas.width, canvas.height);
+      return await new Promise((resolve) => {
+        canvas.toBlob((blob) => resolve(blob || file), "image/jpeg", 0.9);
+      });
+    } finally {
+      URL.revokeObjectURL(imageUrl);
+    }
+  }
+
+  async function handleReceiptSelection(event) {
+    const [file] = event.target.files || [];
+    if (!file) return;
+
+    try {
+      const blob = await compressImageToBlob(file);
+      revokeReceiptPreview();
+      currentReceiptBlob = blob;
+      currentReceiptPreviewUrl = URL.createObjectURL(blob);
+      receiptPreview.src = currentReceiptPreviewUrl;
+      receiptPreview.classList.remove("hidden");
+      setFeedback(receiptFeedback, "Receipt ready. Submit when connected or offline.", "info");
+    } catch (error) {
+      console.warn("Receipt preview failed", error);
+      setFeedback(receiptFeedback, "Could not prepare the receipt image.", "info");
+    }
+  }
+
+  async function handleExpenseSubmission() {
+    if (!currentReceiptBlob) {
+      setFeedback(receiptFeedback, "Please capture a receipt first.", "info");
+      return;
+    }
+
+    const formData = new FormData();
+    formData.append("employee_id", receiptEmployee.value);
+    formData.append("receipt", currentReceiptBlob, "receipt.jpg");
+
+    try {
+      if (!navigator.onLine) throw new Error("offline");
+      const response = await fetch("/api/submit-receipt", { method: "POST", body: formData });
+      if (!response.ok) throw new Error("Request failed");
+      setFeedback(receiptFeedback, "Receipt submitted for processing.", "success");
+      revokeReceiptPreview();
+      receiptPreview.classList.add("hidden");
+      receiptFileInput.value = "";
+      currentReceiptBlob = null;
+    } catch (error) {
+      if (queue && typeof queue.addToQueue === "function") {
+        await queue.addToQueue("submit-receipt", { employee_id: receiptEmployee.value, receipt: currentReceiptBlob }, true);
+      }
+      setFeedback(receiptFeedback, "Receipt saved offline. Will process when connected.", "info");
+      revokeReceiptPreview();
+      receiptPreview.classList.add("hidden");
+      receiptFileInput.value = "";
+      currentReceiptBlob = null;
     }
     await updateQueueCount();
   }
@@ -414,6 +507,8 @@
     delegateForm.addEventListener("submit", handleDelegation);
     attendanceForm.addEventListener("submit", handleAttendanceSubmission);
     leaveForm.addEventListener("submit", handleLeaveSubmission);
+    receiptFileInput.addEventListener("change", handleReceiptSelection);
+    submitExpenseBtn.addEventListener("click", handleExpenseSubmission);
     
     window.addEventListener("online", () => {
       updateConnectivity();

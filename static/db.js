@@ -69,14 +69,21 @@
         
         if (entry.isFormData) {
           const formData = new FormData();
-          for (const key in entry.payload) {
-            if (key === 'audio' && entry.payload[key] instanceof Blob) {
-              formData.append(key, entry.payload[key], "audio.webm");
-            } else {
-              formData.append(key, entry.payload[key]);
+          if (entry.payload instanceof FormData) {
+            fetchOptions.body = entry.payload;
+          } else if (entry.payload instanceof Blob || entry.payload instanceof File) {
+            formData.append("receipt", entry.payload, entry.payload.name || "receipt.jpg");
+            fetchOptions.body = formData;
+          } else if (entry.payload && typeof entry.payload === "object") {
+            for (const [key, value] of Object.entries(entry.payload)) {
+              if (value instanceof Blob || value instanceof File) {
+                formData.append(key, value, value.name || `${key}.bin`);
+              } else {
+                formData.append(key, value);
+              }
             }
+            fetchOptions.body = formData;
           }
-          fetchOptions.body = formData;
         } else {
           fetchOptions.headers = { "Content-Type": "application/json" };
           fetchOptions.body = JSON.stringify(entry.payload);
