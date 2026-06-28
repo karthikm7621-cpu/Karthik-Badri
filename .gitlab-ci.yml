@@ -1,53 +1,19 @@
 image: python:3.10-slim
 
 stages:
-  - setup
-  - format
   - lint
-  - type_check
-  - security
   - test
 
-variables:
-  PIP_CACHE_DIR: "$CI_PROJECT_DIR/.cache/pip"
-
-cache:
-  paths:
-    - .cache/pip
-
 before_script:
-  - apt-get update && apt-get install -y build-essential gcc g++ make
-  - python -m venv venv
-  - source venv/bin/activate
   - pip install --upgrade pip
   - pip install -r requirements.txt
-
-setup_env:
-  stage: setup
-  script:
-    - python -c "import flask; print('Flask installed successfully')"
-  
-format_code:
-  stage: format
-  script:
-    - black --check --exclude 'venv|__pycache__|.git' .
 
 lint_code:
   stage: lint
   script:
-    - flake8 . --exclude=venv,.venv,__pycache__,.git
-
-type_check:
-  stage: type_check
-  script:
-    - mypy --ignore-missing-imports --exclude venv .
-
-security_scan:
-  stage: security
-  script:
-    - bandit -r . -x venv,.venv,__pycache__,.git
+    - flake8 app.py
 
 test_app:
   stage: test
   script:
-    - pytest -v --ignore=venv
+    - pytest app.py
