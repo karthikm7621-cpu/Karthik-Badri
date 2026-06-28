@@ -16,7 +16,7 @@ cache:
     - .cache/pip
 
 before_script:
-  # Set up virtual environment and install dependencies securely
+  - apt-get update && apt-get install -y build-essential gcc g++ make
   - python -m venv venv
   - source venv/bin/activate
   - pip install --upgrade pip
@@ -25,31 +25,29 @@ before_script:
 setup_env:
   stage: setup
   script:
-    - python -c "import flask; print(f'Flask {flask.__version__} installed successfully')"
+    - python -c "import flask; print('Flask installed successfully')"
   
 format_code:
   stage: format
   script:
-    - black --check .
+    - black --check --exclude 'venv|__pycache__|.git' .
 
 lint_code:
   stage: lint
   script:
-    - flake8 .
+    - flake8 . --exclude=venv,.venv,__pycache__,.git
 
 type_check:
   stage: type_check
   script:
-    # Ignoring errors on missing type hints for external libraries
-    - mypy --ignore-missing-imports .
+    - mypy --ignore-missing-imports --exclude venv .
 
 security_scan:
   stage: security
   script:
-    # Run bandit to check for common security issues (e.g., SQL injection, hardcoded passwords)
-    - bandit -r . -f custom
+    - bandit -r . -x venv,.venv,__pycache__,.git
 
 test_app:
   stage: test
   script:
-    - pytest -v
+    - pytest -v --ignore=venv
