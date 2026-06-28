@@ -1,57 +1,78 @@
 document.addEventListener("DOMContentLoaded", () => {
     const form = document.getElementById("data-form");
     const jsonInput = document.getElementById("json-input");
-    const responseContainer = document.getElementById("response-container");
-    const responseOutput = document.getElementById("response-output");
     const submitBtn = document.getElementById("submit-btn");
+    const btnText = submitBtn.querySelector(".btn-text");
+    const spinner = submitBtn.querySelector(".spinner");
+    const feedbackMessage = document.getElementById("feedback-message");
+    const resultOutput = document.getElementById("result-output");
 
     form.addEventListener("submit", async (e) => {
         e.preventDefault();
+
+        // Reset UI state
+        feedbackMessage.textContent = "";
+        feedbackMessage.className = "feedback";
+        resultOutput.classList.add("empty-state");
         
-        const rawData = jsonInput.value.trim();
-        if (!rawData) {
-            alert("Please enter some JSON data.");
+        let payload;
+        try {
+            // Validate JSON on client side before sending
+            const rawValue = jsonInput.value.trim();
+            if (!rawValue) throw new Error("Input cannot be empty.");
+            payload = JSON.parse(rawValue);
+        } catch (error) {
+            showFeedback(`Invalid JSON: ${error.message}`, "error");
             return;
         }
 
-        let parsedData;
-        try {
-            parsedData = JSON.parse(rawData);
-        } catch (err) {
-            alert("Invalid JSON format. Please correct it and try again.");
-            return;
-        }
-
-        submitBtn.disabled = true;
-        submitBtn.textContent = "Processing...";
-        responseContainer.classList.add("hidden");
+        // Set Loading state
+        setLoading(true);
 
         try {
+            // Asynchronously trigger Flask API
             const response = await fetch("/api/process", {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json"
                 },
-                body: JSON.stringify(parsedData)
+                body: JSON.stringify(payload)
             });
 
-            const responseData = await response.json();
-            
-            responseContainer.classList.remove("hidden");
-            if (response.ok) {
-                responseOutput.textContent = JSON.stringify(responseData, null, 2);
-                responseOutput.style.color = "var(--text-main)";
-            } else {
-                responseOutput.textContent = `Error: ${responseData.error}`;
-                responseOutput.style.color = "var(--error-color)";
+            const data = await response.json();
+
+            if (!response.ok) {
+                throw new Error(data.error || "An error occurred during processing.");
             }
+
+            // Update DOM dynamically with result
+            resultOutput.classList.remove("empty-state");
+            resultOutput.textContent = JSON.stringify(data, null, 2);
+            showFeedback("Data processed successfully!", "success");
+
         } catch (error) {
-            responseContainer.classList.remove("hidden");
-            responseOutput.textContent = `Network Error: ${error.message}`;
-            responseOutput.style.color = "var(--error-color)";
+            resultOutput.textContent = "Processing failed.";
+            showFeedback(error.message, "error");
         } finally {
-            submitBtn.disabled = false;
-            submitBtn.textContent = "Process Data";
+            // Remove Loading state
+            setLoading(false);
         }
     });
+
+    function setLoading(isLoading) {
+        if (isLoading) {
+            submitBtn.disabled = true;
+            btnText.classList.add("hidden");
+            spinner.classList.remove("hidden");
+        } else {
+            submitBtn.disabled = false;
+            btnText.classList.remove("hidden");
+            spinner.classList.add("hidden");
+        }
+    }
+
+    function showFeedback(message, type) {
+        feedbackMessage.textContent = message;
+        feedbackMessage.className = `feedback ${type}`;
+    }
 });
