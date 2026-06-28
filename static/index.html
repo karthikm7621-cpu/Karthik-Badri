@@ -199,6 +199,27 @@
       </form>
       <p class="feedback" id="receipt-feedback" aria-live="polite"></p>
     </section>
+
+    <section class="card">
+      <div class="card__header">
+        <div>
+          <h2>HR Support Helpdesk</h2>
+          <p>Explain your issue in any language (e.g., English, Hindi, Telugu).</p>
+        </div>
+      </div>
+      <form id="hr-form" class="form" novalidate>
+        <label class="field">
+          <span>Employee</span>
+          <select id="hr-employee" name="employee" required></select>
+        </label>
+        <label class="field">
+          <span>Describe Your Issue</span>
+          <textarea id="hr-request" name="raw_text" rows="6" placeholder="Type your HR issue here in your native language..." required></textarea>
+        </label>
+        <button type="submit">Submit Ticket</button>
+      </form>
+      <p class="feedback" id="hr-feedback" aria-live="polite"></p>
+    </section>
   </main>
 
   <script src="/static/db.js"></script>
