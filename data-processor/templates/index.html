@@ -3,32 +3,54 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Data Processing Application</title>
-    <link rel="stylesheet" href="/static/style.css">
+    <title>Data Processor - Production Web Application</title>
+    <!-- Use Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/styles.css">
 </head>
 <body>
-    <main class="container">
-        <header>
-            <h1>Data Processor API</h1>
-            <p>Send JSON payload to the processing engine.</p>
+    <div class="app-container">
+        <!-- Header -->
+        <header class="app-header">
+            <div class="logo">
+                <div class="logo-icon"></div>
+                <h1>DataProcessor<span>.io</span></h1>
+            </div>
+            <div class="status-badge online">System Online</div>
         </header>
-        
-        <form id="data-form">
-            <div class="form-group">
-                <label for="json-input">Input JSON Data:</label>
-                <textarea id="json-input" rows="10" placeholder='{"key": "value", "count": 42}' required></textarea>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <div class="card input-card">
+                <div class="card-header">
+                    <h2>Input Payload</h2>
+                    <p>Enter your JSON data payload below to process.</p>
+                </div>
+                <form id="data-form">
+                    <div class="field">
+                        <textarea id="json-input" placeholder='{&#10;  "sample_key": "sample_value",&#10;  "metrics": [1, 2, 3]&#10;}' spellcheck="false"></textarea>
+                    </div>
+                    <button type="submit" id="submit-btn">
+                        <span class="btn-text">Process Data</span>
+                        <div class="spinner hidden"></div>
+                    </button>
+                    <div id="feedback-message" class="feedback"></div>
+                </form>
             </div>
-            <button type="submit" id="submit-btn">Process Data</button>
-        </form>
-        
-        <section id="response-container" class="hidden">
-            <h2>Processing Result</h2>
-            <div class="response-wrapper">
-                <pre id="response-output"></pre>
+
+            <div class="card output-card">
+                <div class="card-header">
+                    <h2>Processing Result</h2>
+                    <p>Processed results will appear here dynamically.</p>
+                </div>
+                <div class="result-container">
+                    <pre id="result-output" class="empty-state">No data processed yet.</pre>
+                </div>
             </div>
-        </section>
-    </main>
-    
+        </main>
+    </div>
+
+    <!-- Scripts -->
     <script src="/static/app.js"></script>
 </body>
 </html>
