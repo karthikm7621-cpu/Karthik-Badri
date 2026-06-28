@@ -19,6 +19,15 @@
   const leaveEmployee = document.getElementById("leave-employee");
   const attendanceDate = document.getElementById("attendance-date");
 
+  let mediaRecorder = null;
+  let audioChunks = [];
+  let currentAudioBlob = null;
+
+  const recordBtn = document.getElementById("record-btn");
+  const recordingIndicator = document.getElementById("recording-indicator");
+  const audioPlayback = document.getElementById("audio-playback");
+  const submitAudioBtn = document.getElementById("submit-audio-btn");
+
   function setFeedback(element, message, type) {
     element.className = `feedback ${type}`;
     element.textContent = message;
@@ -136,10 +145,106 @@
     }
   }
 
+  async function initAudioRecorder() {
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      console.warn("Media devices API not supported.");
+      return;
+    }
+
+    recordBtn.addEventListener("mousedown", async () => {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        mediaRecorder = new MediaRecorder(stream);
+        audioChunks = [];
+
+        mediaRecorder.addEventListener("dataavailable", (event) => {
+          if (event.data.size > 0) {
+            audioChunks.push(event.data);
+          }
+        });
+
+        mediaRecorder.addEventListener("stop", () => {
+          currentAudioBlob = new Blob(audioChunks, { type: "audio/webm" });
+          const audioUrl = URL.createObjectURL(currentAudioBlob);
+          audioPlayback.src = audioUrl;
+          audioPlayback.classList.remove("hidden");
+          submitAudioBtn.classList.remove("hidden");
+
+          stream.getTracks().forEach((track) => track.stop());
+        });
+
+        mediaRecorder.start();
+        recordingIndicator.classList.remove("hidden");
+      } catch (err) {
+        setFeedback(leaveFeedback, "Microphone access denied or error.", "info");
+      }
+    });
+
+    recordBtn.addEventListener("mouseup", () => {
+      if (mediaRecorder && mediaRecorder.state !== "inactive") {
+        mediaRecorder.stop();
+        recordingIndicator.classList.add("hidden");
+      }
+    });
+
+    recordBtn.addEventListener("touchstart", (e) => {
+      e.preventDefault();
+      recordBtn.dispatchEvent(new Event("mousedown"));
+    });
+    recordBtn.addEventListener("touchend", (e) => {
+      e.preventDefault();
+      recordBtn.dispatchEvent(new Event("mouseup"));
+    });
+  }
+
+  submitAudioBtn.addEventListener("click", async () => {
+    if (!currentAudioBlob) return;
+
+    const payload = {
+      employee_id: leaveEmployee.value,
+      audio: currentAudioBlob,
+    };
+
+    try {
+      if (!navigator.onLine) {
+        throw new Error("offline");
+      }
+
+      const formData = new FormData();
+      formData.append("employee_id", payload.employee_id);
+      formData.append("audio", payload.audio, "audio.webm");
+
+      const response = await fetch("/api/submit-audio-leave", {
+        method: "POST",
+        body: formData,
+      });
+
+      if (!response.ok) {
+        throw new Error("Request failed");
+      }
+
+      setFeedback(leaveFeedback, "Voice note submitted for processing.", "success");
+      currentAudioBlob = null;
+      audioPlayback.classList.add("hidden");
+      submitAudioBtn.classList.add("hidden");
+    } catch (error) {
+      if (queue && typeof queue.addToQueue === "function") {
+        await queue.addToQueue("submit-audio-leave", payload, true);
+      }
+      setFeedback(leaveFeedback, "Voice note saved for later sync.", "info");
+      currentAudioBlob = null;
+      audioPlayback.classList.add("hidden");
+      submitAudioBtn.classList.add("hidden");
+    }
+
+    await updateQueueCount();
+  });
+
   async function init() {
     renderEmployees();
     updateConnectivity();
     await updateQueueCount();
+    void initAudioRecorder();
 
     attendanceForm.addEventListener("submit", handleAttendanceSubmission);
     leaveForm.addEventListener("submit", handleLeaveSubmission);

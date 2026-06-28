@@ -72,6 +72,13 @@
           <textarea id="leave-request" name="request" rows="6" placeholder="Describe the leave details, dates, and reason"></textarea>
         </label>
         <button type="submit">Queue Leave Request</button>
+        
+        <div class="audio-recorder">
+          <button type="button" id="record-btn" class="secondary-btn">Hold to Record Voice Note</button>
+          <span id="recording-indicator" class="recording-indicator hidden">Recording...</span>
+          <audio id="audio-playback" controls class="hidden"></audio>
+          <button type="button" id="submit-audio-btn" class="hidden">Submit Voice Note</button>
+        </div>
       </form>
       <p class="feedback" id="leave-feedback" aria-live="polite"></p>
     </section>

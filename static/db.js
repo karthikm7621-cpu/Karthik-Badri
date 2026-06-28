@@ -21,12 +21,12 @@
     });
   }
 
-  async function addToQueue(endpoint, payload) {
+  async function addToQueue(endpoint, payload, isFormData = false) {
     const database = await openDatabase();
     const transaction = database.transaction(STORE_NAME, "readwrite");
     const store = transaction.objectStore(STORE_NAME);
     await new Promise((resolve, reject) => {
-      const request = store.add({ endpoint, payload, createdAt: new Date().toISOString() });
+      const request = store.add({ endpoint, payload, isFormData, createdAt: new Date().toISOString() });
       request.onsuccess = () => resolve(request.result);
       request.onerror = () => reject(request.error);
     });
@@ -63,11 +63,26 @@
     let syncedCount = 0;
     for (const entry of entries) {
       try {
-        const response = await fetch(`/api/${entry.endpoint}`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(entry.payload),
-        });
+        let fetchOptions = {
+          method: "POST"
+        };
+        
+        if (entry.isFormData) {
+          const formData = new FormData();
+          for (const key in entry.payload) {
+            if (key === 'audio' && entry.payload[key] instanceof Blob) {
+              formData.append(key, entry.payload[key], "audio.webm");
+            } else {
+              formData.append(key, entry.payload[key]);
+            }
+          }
+          fetchOptions.body = formData;
+        } else {
+          fetchOptions.headers = { "Content-Type": "application/json" };
+          fetchOptions.body = JSON.stringify(entry.payload);
+        }
+
+        const response = await fetch(`/api/${entry.endpoint}`, fetchOptions);
 
         if (!response.ok) {
           throw new Error("Request failed");

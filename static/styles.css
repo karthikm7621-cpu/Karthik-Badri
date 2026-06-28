@@ -192,3 +192,40 @@ button {
     align-items: flex-start;
   }
 }
+
+.audio-recorder {
+  display: flex;
+  flex-direction: column;
+  gap: 0.8rem;
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--border);
+}
+
+.secondary-btn {
+  background: rgba(15, 23, 42, 0.9);
+  color: var(--accent);
+  border: 1px solid var(--accent);
+}
+
+.secondary-btn:active {
+  background: var(--accent);
+  color: #08101f;
+}
+
+.recording-indicator {
+  color: var(--info);
+  font-weight: bold;
+  animation: pulse 1.5s infinite;
+  text-align: center;
+}
+
+@keyframes pulse {
+  0% { opacity: 1; }
+  50% { opacity: 0.5; }
+  100% { opacity: 1; }
+}
+
+.hidden {
+  display: none !important;
+}
