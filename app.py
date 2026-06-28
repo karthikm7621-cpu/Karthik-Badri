@@ -1,78 +1,152 @@
-# To run this Flask application locally, execute:
-# python app.py
-# (It will automatically create the ems.db SQLite database file on first run)
-
-from flask import Flask, request, jsonify
-from models import db, Employee, LeaveRequest, AttendanceRecord
+import json
 import os
+from datetime import datetime
+from typing import Any, Dict
+
+from flask import Flask, jsonify, request
+from flask_cors import CORS
+
+from models import AttendanceRecord, Employee, LeaveRequest, db
 
 app = Flask(__name__)
+CORS(app)
 
-# Use a local SQLite database for offline-first capability
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///ems.db'
-app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///ems.db"
+app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 
 db.init_app(app)
 
-@app.route('/api/employees', methods=['GET', 'POST'])
-def manage_employees():
-    if request.method == 'POST':
-        # TODO: Implement add employee logic
-        pass 
-    return jsonify({"message": "List of employees endpoint stub"})
 
-@app.route('/api/attendance', methods=['POST'])
-def track_attendance():
-    # TODO: Handle image upload and ONNX CPU OCR extraction
-    return jsonify({"message": "Attendance tracked endpoint stub"})
+def get_llm() -> Any:
+    """Loads a lightweight local LLM via llama-cpp-python."""
+    model_path = os.environ.get("LLM_MODEL_PATH", "./models/model.gguf")
+    try:
+        from llama_cpp import Llama
 
-@app.route('/api/leave', methods=['POST'])
-def submit_leave_request():
-    """
-    Handles unstructured leave requests (text) and processes them
-    using local CPU-based AI inference.
-    """
+        if os.path.exists(model_path):
+            return Llama(model_path=model_path, verbose=False)
+    except ImportError:
+        pass
+    return None
+
+
+def process_leave_with_llm(raw_text: str) -> Dict[str, Any]:
+    """Parses unstructured text to extract leave details using a local LLM."""
+    llm = get_llm()
+    if not llm:
+        return {
+            "start_date": "2026-07-01",
+            "end_date": "2026-07-03",
+            "reason": "Mocked reason due to missing model",
+        }
+
+    system_prompt = (
+        "You are a strict JSON data extractor. "
+        "Extract 'start_date', 'end_date', and 'reason' from the text. "
+        "Return ONLY valid JSON with keys: start_date, end_date, reason. No other text."
+    )
+    prompt = f"{system_prompt}\nText: {raw_text}\nJSON:"
+
+    response = llm(prompt, max_tokens=150, temperature=0.1)
+    try:
+        output_text = response["choices"][0]["text"].strip()
+        parsed = json.loads(output_text)
+        return parsed
+    except Exception:
+        return {
+            "start_date": "1970-01-01",
+            "end_date": "1970-01-01",
+            "reason": "Failed to parse",
+        }
+
+
+@app.route("/api/employees", methods=["GET"])
+def get_employees() -> Any:
+    employees = Employee.query.all()
+    return jsonify(
+        [
+            {
+                "id": e.id,
+                "employee_id_string": e.employee_id_string,
+                "full_name": e.full_name,
+                "department": e.department,
+                "role": e.role,
+            }
+            for e in employees
+        ]
+    )
+
+
+@app.route("/api/dashboard", methods=["GET"])
+def get_dashboard() -> Any:
+    leaves = LeaveRequest.query.all()
+    attendance = AttendanceRecord.query.all()
+    return jsonify(
+        {
+            "leave_count": len(leaves),
+            "attendance_count": len(attendance),
+        }
+    )
+
+
+@app.route("/api/sync-attendance", methods=["POST"])
+def sync_attendance() -> Any:
     data = request.json or {}
-    unstructured_text = data.get('raw_text', '')
-    
+    employee_id = data.get("employee_id")
+    date_str = data.get("date")
+    if not employee_id or not date_str:
+        return jsonify({"error": "Missing employee_id or date"}), 400
+    try:
+        record_date = datetime.strptime(date_str, "%Y-%m-%d").date()
+    except ValueError:
+        return jsonify({"error": "Invalid date format"}), 400
+
+    record = AttendanceRecord(
+        employee_id=employee_id,
+        date=record_date,
+    )
+    db.session.add(record)
+    db.session.commit()
+    return jsonify({"message": "Attendance synced successfully"})
+
+
+@app.route("/api/submit-leave", methods=["POST"])
+def submit_leave() -> Any:
+    data = request.json or {}
+    unstructured_text = data.get("raw_text", "")
+    employee_id = data.get("employee_id", 1)
+
     if not unstructured_text:
         return jsonify({"error": "No raw_text provided"}), 400
 
-    # Process unstructured text using local offline AI
-    structured_data = process_leave_with_llm(unstructured_text)
-    
-    # TODO: Save the structured_data into the SQLite database as a LeaveRequest
-    
-    return jsonify({"status": "success", "extracted_data": structured_data})
+    extracted_data = process_leave_with_llm(unstructured_text)
 
-def process_leave_with_llm(raw_text: str) -> dict:
-    """
-    Placeholder function for local CPU inference (e.g., using llama.cpp).
-    This function processes unstructured text into structured JSON.
-    """
-    # -------------------------------------------------------------
-    # Example logic that would be handled by llama-cpp-python:
-    # -------------------------------------------------------------
-    # from llama_cpp import Llama
-    # llm = Llama(model_path="./models/llama-3-8b-instruct.Q4_K_M.gguf")
-    # prompt = f"Extract leave dates and reason from this text: {raw_text}"
-    # response = llm(prompt, max_tokens=100)
-    # -------------------------------------------------------------
-    
-    print(f"[*] Running local CPU inference to parse: '{raw_text}'")
-    
-    # Mocking the AI extraction for now
-    return {
-        "start_date": "2026-07-01",
-        "end_date": "2026-07-03",
-        "reason": "Feeling unwell",
-        "leave_type": "Sick"
-    }
+    try:
+        start_date = datetime.strptime(
+            extracted_data.get("start_date", ""), "%Y-%m-%d"
+        ).date()
+        end_date = datetime.strptime(
+            extracted_data.get("end_date", ""), "%Y-%m-%d"
+        ).date()
+    except ValueError:
+        start_date = datetime.utcnow().date()
+        end_date = datetime.utcnow().date()
 
-if __name__ == '__main__':
-    # Initialize the database and tables on startup
+    reason = extracted_data.get("reason", "")
+
+    leave_req = LeaveRequest(
+        employee_id=employee_id,
+        start_date=start_date,
+        end_date=end_date,
+        reason_raw_text=reason,
+    )
+    db.session.add(leave_req)
+    db.session.commit()
+
+    return jsonify({"status": "success", "extracted_data": extracted_data})
+
+
+if __name__ == "__main__":
     with app.app_context():
         db.create_all()
-    
-    # Run the server on localhost, port 5000
-    app.run(debug=True, host='0.0.0.0', port=5000)
+    app.run(debug=True, host="0.0.0.0", port=5000)
