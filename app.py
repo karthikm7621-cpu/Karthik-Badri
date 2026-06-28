@@ -15,6 +15,16 @@ app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 db = SQLAlchemy(app)
 
 
+@app.route("/")
+def index():
+    return send_from_directory("static", "index.html")
+
+@app.route("/<path:filename>")
+def serve_static(filename):
+    return send_from_directory("static", filename)
+
+
+
 class Employee(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     employee_id_string = db.Column(db.String(50), unique=True, nullable=False)
