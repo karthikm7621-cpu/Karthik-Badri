@@ -3,7 +3,7 @@ import os
 from datetime import datetime
 from typing import Any, Dict
 
-from flask import Flask, jsonify, request
+from flask import Flask, jsonify, request, send_from_directory
 from flask_cors import CORS
 
 from models import AttendanceRecord, Employee, LeaveRequest, db
@@ -11,10 +11,16 @@ from models import AttendanceRecord, Employee, LeaveRequest, db
 app = Flask(__name__)
 CORS(app)
 
+# Use a local SQLite database for offline-first capability
 app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///ems.db"
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 
 db.init_app(app)
+
+
+@app.route("/")
+def index() -> Any:
+    return send_from_directory("static", "index.html")
 
 
 def get_llm() -> Any:

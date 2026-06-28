@@ -1,286 +1,83 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta name="theme-color" content="#0f172a" />
-  <link rel="manifest" href="manifest.json" />
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#0f172a">
+  <link rel="manifest" href="/static/manifest.json">
+  <link rel="stylesheet" href="/static/styles.css">
   <title>CPU-First EMS</title>
-  <style>
-    :root {
-      color-scheme: dark;
-      --bg: #08101f;
-      --surface: #0d1b2a;
-      --surface-2: #12253f;
-      --primary: #38bdf8;
-      --accent: #7dd3fc;
-      --text: #e2e8f0;
-      --muted: #94a3b8;
-      --border: rgba(148, 163, 184, 0.16);
-      font-family: Inter, ui-sans-serif, system-ui, sans-serif;
-    }
-
-    * {
-      box-sizing: border-box;
-    }
-
-    body {
-      margin: 0;
-      min-height: 100vh;
-      background: radial-gradient(circle at top left, rgba(56, 189, 248, 0.18), transparent 28%),
-        linear-gradient(180deg, #07111f 0%, #07111f 48%, #0b1d30 100%);
-      color: var(--text);
-      line-height: 1.6;
-    }
-
-    header {
-      padding: 1.5rem 1.25rem 0;
-      max-width: 1120px;
-      margin: 0 auto;
-    }
-
-    .brand {
-      display: flex;
-      align-items: center;
-      gap: 0.9rem;
-      font-weight: 700;
-      letter-spacing: -0.03em;
-    }
-
-    .brand span {
-      color: var(--accent);
-    }
-
-    nav {
-      margin-top: 1.5rem;
-      display: flex;
-      gap: 0.75rem;
-      flex-wrap: wrap;
-    }
-
-    nav a {
-      text-decoration: none;
-      padding: 0.75rem 1rem;
-      border-radius: 999px;
-      background: rgba(15, 23, 42, 0.65);
-      color: var(--text);
-      border: 1px solid transparent;
-      transition: background 160ms ease, border-color 160ms ease;
-    }
-
-    nav a:hover,
-    nav a:focus-visible {
-      background: rgba(56, 189, 248, 0.16);
-      border-color: rgba(56, 189, 248, 0.32);
-    }
-
-    main {
-      max-width: 1120px;
-      margin: 1.5rem auto 3rem;
-      padding: 0 1.25rem;
-      display: grid;
-      gap: 1.5rem;
-    }
-
-    .hero {
-      padding: 2rem;
-      border: 1px solid var(--border);
-      border-radius: 24px;
-      background: rgba(15, 23, 42, 0.76);
-      backdrop-filter: blur(14px);
-    }
-
-    .hero h1 {
-      margin: 0 0 0.75rem;
-      font-size: clamp(2rem, 4vw, 3.25rem);
-      letter-spacing: -0.05em;
-    }
-
-    .hero p {
-      margin: 0;
-      max-width: 720px;
-      color: var(--muted);
-    }
-
-    .grid {
-      display: grid;
-      gap: 1.5rem;
-    }
-
-    .card {
-      background: rgba(15, 23, 42, 0.8);
-      border: 1px solid var(--border);
-      border-radius: 24px;
-      padding: 1.75rem;
-      box-shadow: 0 24px 70px rgba(0, 0, 0, 0.16);
-    }
-
-    .card h2 {
-      margin-top: 0;
-      margin-bottom: 0.75rem;
-      font-size: 1.4rem;
-    }
-
-    .card p,
-    .card label,
-    .card small {
-      color: var(--muted);
-    }
-
-    .split {
-      display: grid;
-      gap: 1.5rem;
-    }
-
-    .form-group {
-      display: grid;
-      gap: 0.6rem;
-      margin-bottom: 1rem;
-    }
-
-    label {
-      font-size: 0.95rem;
-    }
-
-    input,
-    textarea,
-    button {
-      width: 100%;
-      border-radius: 14px;
-      border: 1px solid rgba(148, 163, 184, 0.16);
-      background: rgba(15, 23, 42, 0.9);
-      color: var(--text);
-      padding: 0.95rem 1rem;
-      font: inherit;
-    }
-
-    input[type="file"] {
-      padding: 0.8rem 1rem;
-    }
-
-    textarea {
-      min-height: 180px;
-      resize: vertical;
-    }
-
-    button {
-      cursor: pointer;
-      color: #0f172a;
-      background: linear-gradient(135deg, #38bdf8, #67e8f9);
-      border: none;
-      font-weight: 700;
-      transition: transform 140ms ease, filter 140ms ease;
-    }
-
-    button:hover,
-    button:focus-visible {
-      transform: translateY(-1px);
-      filter: brightness(1.05);
-    }
-
-    .status {
-      display: inline-flex;
-      align-items: center;
-      gap: 0.5rem;
-      padding: 0.8rem 1rem;
-      border-radius: 14px;
-      background: rgba(15, 23, 42, 0.9);
-      border: 1px solid rgba(56, 189, 248, 0.16);
-      color: var(--text);
-      margin-top: 1rem;
-    }
-
-    .status.success {
-      border-color: #22c55e;
-      color: #d1fae5;
-    }
-
-    .status.error {
-      border-color: #f97316;
-      color: #fee2e2;
-    }
-
-    .status.offline {
-      border-color: #facc15;
-      color: #fef3c7;
-    }
-
-    @media (min-width: 900px) {
-      .grid-2 {
-        grid-template-columns: 1.35fr 1fr;
-      }
-    }
-
-    @media (max-width: 680px) {
-      nav {
-        justify-content: center;
-      }
-    }
-  </style>
 </head>
 <body>
-  <header>
-    <div class="brand">
-      <div>
-        <strong>CPU-First EMS</strong>
-        <div style="font-size:0.9rem;color:var(--muted);">Offline-first employee management hub</div>
-      </div>
+  <header class="hero">
+    <div class="hero__content">
+      <p class="eyebrow">Offline-first employee management</p>
+      <h1>CPU-First EMS</h1>
+      <p>Track attendance, queue submissions, and manage leave requests even when the network is unavailable.</p>
+      <div class="hero__status" id="connection-status" role="status">Checking connectivity…</div>
     </div>
-    <nav>
-      <a href="#dashboard">Dashboard</a>
-      <a href="#attendance">Attendance</a>
-      <a href="#leave">Leave Request</a>
-    </nav>
   </header>
 
-  <main>
-    <section class="hero card" id="dashboard">
-      <h1>Dashboard</h1>
-      <p>Check your attendance status, upload timesheet images, and submit leave requests instantly. This app is built to work even when your network is unavailable.</p>
-      <div class="status offline" id="network-status" aria-live="polite">Checking network status...</div>
+  <main class="layout">
+    <section class="card">
+      <div class="card__header">
+        <div>
+          <h2>Employee Directory</h2>
+          <p>Active team members ready for attendance and leave actions.</p>
+        </div>
+        <span class="pill" id="queue-count">Queue: 0</span>
+      </div>
+      <ul class="employee-list" id="employee-list"></ul>
     </section>
 
-    <div class="grid grid-2">
-      <section class="card" id="attendance">
-        <h2>Attendance Upload</h2>
-        <p>Submit timesheet images for review. The app will keep your most recent payload ready for backend delivery.</p>
-        <form id="attendance-form" enctype="multipart/form-data">
-          <div class="form-group">
-            <label for="employee-id">Employee ID</label>
-            <input type="text" id="employee-id" name="employeeId" required placeholder="EMP-1234" />
-          </div>
-          <div class="form-group">
-            <label for="timesheet-file">Timesheet image</label>
-            <input type="file" id="timesheet-file" name="timesheetFile" accept="image/png, image/jpeg" required />
-          </div>
-          <div class="form-group">
-            <label for="attendance-notes">Notes</label>
-            <textarea id="attendance-notes" name="notes" placeholder="Optional details about the shift."></textarea>
-          </div>
-          <button type="submit">Upload Attendance</button>
-          <div id="attendance-status" class="status" hidden></div>
-        </form>
-      </section>
+    <section class="card">
+      <div class="card__header">
+        <div>
+          <h2>Log Attendance</h2>
+          <p>Capture a check-in or timesheet update locally and sync whenever the network returns.</p>
+        </div>
+      </div>
+      <form id="attendance-form" class="form" novalidate>
+        <label class="field">
+          <span>Employee</span>
+          <select id="attendance-employee" name="employee" required></select>
+        </label>
+        <label class="field">
+          <span>Date</span>
+          <input type="date" id="attendance-date" name="date" required>
+        </label>
+        <label class="field">
+          <span>Notes</span>
+          <textarea id="attendance-notes" name="notes" rows="4" placeholder="Optional notes for the shift"></textarea>
+        </label>
+        <button type="submit">Save Attendance</button>
+      </form>
+      <p class="feedback" id="attendance-feedback" aria-live="polite"></p>
+    </section>
 
-      <section class="card" id="leave">
-        <h2>Leave Request</h2>
-        <p>Send a leave request to HR directly from the app. Offline support is enabled, so the form will still render without a live connection.</p>
-        <form id="leave-form">
-          <div class="form-group">
-            <label for="leave-employee-id">Employee ID</label>
-            <input type="text" id="leave-employee-id" name="employeeId" required placeholder="EMP-1234" />
-          </div>
-          <div class="form-group">
-            <label for="leave-reason">Reason for leave</label>
-            <textarea id="leave-reason" name="reason" required placeholder="Describe your request and requested dates."></textarea>
-          </div>
-          <button type="submit">Submit Leave Request</button>
-          <div id="leave-status" class="status" hidden></div>
-        </form>
-      </section>
-    </div>
+    <section class="card">
+      <div class="card__header">
+        <div>
+          <h2>Submit Leave Request</h2>
+          <p>Write a leave note and queue it safely until the backend is reachable.</p>
+        </div>
+      </div>
+      <form id="leave-form" class="form" novalidate>
+        <label class="field">
+          <span>Employee</span>
+          <select id="leave-employee" name="employee" required></select>
+        </label>
+        <label class="field">
+          <span>Leave Request</span>
+          <textarea id="leave-request" name="request" rows="6" placeholder="Describe the leave details, dates, and reason"></textarea>
+        </label>
+        <button type="submit">Queue Leave Request</button>
+      </form>
+      <p class="feedback" id="leave-feedback" aria-live="polite"></p>
+    </section>
   </main>
 
-  <script src="app.js" defer></script>
+  <script src="/static/db.js"></script>
+  <script src="/static/app.js"></script>
 </body>
 </html>
