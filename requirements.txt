@@ -1,0 +1,11 @@
+# To install all dependencies, run the following command in your terminal:
+# pip install -r requirements.txt
+
+Flask==3.0.0
+Flask-SQLAlchemy==3.1.1
+llama-cpp-python==0.2.26
+pytest==7.4.3
+flake8==6.1.0
+black==23.11.0
+bandit==1.7.5
+mypy==1.7.1
