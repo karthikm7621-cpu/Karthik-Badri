@@ -61,6 +61,11 @@
   const hrEmployee = document.getElementById("hr-employee");
   const hrRequest = document.getElementById("hr-request");
 
+  // Policy chat UI
+  const policyChatForm = document.getElementById("policy-chat-form");
+  const policyChatInput = document.getElementById("policy-chat-input");
+  const policyChatHistory = document.getElementById("policy-chat-history");
+
   // Audio UI
   let mediaRecorder = null;
   let audioChunks = [];
@@ -79,6 +84,14 @@
   function setFeedback(element, message, type) {
     element.className = `feedback ${type}`;
     element.textContent = message;
+  }
+
+  function appendPolicyMessage(text, role) {
+    const bubble = document.createElement("div");
+    bubble.className = `policy-message ${role}`;
+    bubble.textContent = text;
+    policyChatHistory.appendChild(bubble);
+    policyChatHistory.scrollTop = policyChatHistory.scrollHeight;
   }
 
   function updateConnectivity() {
@@ -324,6 +337,43 @@
       setFeedback(leaveFeedback, "Leave request saved for later sync.", "info");
     }
     await updateQueueCount();
+  }
+
+  async function handlePolicyChatSubmit(event) {
+    event.preventDefault();
+    const query = policyChatInput.value.trim();
+    if (!query) {
+      return;
+    }
+
+    appendPolicyMessage(query, "user");
+    policyChatInput.value = "";
+
+    const payload = { query };
+
+    try {
+      if (!navigator.onLine) throw new Error("offline");
+      const response = await fetch("/api/ask-policy", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      if (!response.ok) {
+        throw new Error("Policy request failed");
+      }
+
+      const data = await response.json();
+      appendPolicyMessage(data.answer || "I cannot find the answer in the policy.", "bot");
+    } catch (error) {
+      if (queue && typeof queue.addToQueue === "function") {
+        await queue.addToQueue("ask-policy", payload);
+      }
+      appendPolicyMessage(
+        "You are offline. Your question has been saved and will be answered when the connection is restored.",
+        "bot"
+      );
+    }
   }
 
   function revokeReceiptPreview() {
@@ -594,7 +644,8 @@
     receiptFileInput.addEventListener("change", handleReceiptSelection);
     submitExpenseBtn.addEventListener("click", handleExpenseSubmission);
     hrForm.addEventListener("submit", handleHRSubmission);
-    
+    policyChatForm.addEventListener("submit", handlePolicyChatSubmit);
+
     window.addEventListener("online", () => {
       updateConnectivity();
       void syncQueue();
