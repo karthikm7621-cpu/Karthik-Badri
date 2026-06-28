@@ -1,8 +1,9 @@
 import json
 import os
+import re
 import tempfile
 from datetime import datetime
-from typing import Any, Dict
+from typing import Any, Dict, List, Optional, Tuple
 
 from flask import Flask, jsonify, request, send_from_directory
 from flask_sqlalchemy import SQLAlchemy
@@ -23,6 +24,11 @@ app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 app.config["JSON_SORT_KEYS"] = False
 
 db = SQLAlchemy(app)
+
+RAG_EMBEDDING_MODEL: Optional[Any] = None
+RAG_INDEX: Optional[Any] = None
+RAG_CHUNKS: List[str] = []
+RAG_ERROR: Optional[str] = None
 
 
 @app.route("/")
@@ -134,6 +140,104 @@ def get_llm() -> Any:
     except ImportError:
         pass
     return None
+
+
+def chunk_text(text: str, chunk_size: int = 500, overlap: int = 80) -> List[str]:
+    if not text:
+        return []
+
+    cleaned = re.sub(r"\s+", " ", text).strip()
+    if not cleaned:
+        return []
+
+    chunks: List[str] = []
+    start = 0
+    while start < len(cleaned):
+        end = min(len(cleaned), start + chunk_size)
+        chunk = cleaned[start:end].strip()
+        if chunk:
+            chunks.append(chunk)
+        if end >= len(cleaned):
+            break
+        start = max(0, end - overlap)
+    return chunks
+
+
+def initialize_rag_index(
+    file_path: Optional[str] = None,
+) -> Tuple[Optional[Any], List[str]]:
+    global RAG_EMBEDDING_MODEL, RAG_INDEX, RAG_CHUNKS, RAG_ERROR
+
+    if RAG_INDEX is not None and RAG_CHUNKS:
+        return RAG_INDEX, RAG_CHUNKS
+
+    candidates = []
+    if file_path:
+        candidates.append(file_path)
+
+    candidates.extend(
+        [
+            os.path.join(os.path.dirname(__file__), "static", "policy_handbook.txt"),
+            os.path.join(os.path.dirname(__file__), "README.md"),
+            os.path.join(os.path.dirname(__file__), "SPEC_KIT.md"),
+        ]
+    )
+
+    raw_text = ""
+    for candidate in candidates:
+        if not candidate or not os.path.exists(candidate):
+            continue
+        try:
+            with open(candidate, "r", encoding="utf-8") as handle:
+                raw_text = handle.read()
+            break
+        except Exception:
+            continue
+
+    if not raw_text:
+        raw_text = (
+            "Company policy handbook: employees should submit leave requests at "
+            "least three working days in advance. Remote work requires prior "
+            "manager approval. Benefits information is shared during onboarding "
+            "and updated annually."
+        )
+
+    chunks = chunk_text(raw_text)
+    if not chunks:
+        RAG_ERROR = "No policy content available"
+        return None, []
+
+    try:
+        from sentence_transformers import SentenceTransformer
+        import faiss
+        import numpy as np
+    except Exception as exc:
+        RAG_ERROR = str(exc)
+        RAG_CHUNKS = chunks
+        return None, chunks
+
+    try:
+        if RAG_EMBEDDING_MODEL is None:
+            RAG_EMBEDDING_MODEL = SentenceTransformer("all-MiniLM-L6-v2")
+
+        embeddings = RAG_EMBEDDING_MODEL.encode(
+            chunks,
+            convert_to_numpy=True,
+            normalize_embeddings=True,
+        )
+        embeddings = np.asarray(embeddings, dtype="float32")
+        dimension = embeddings.shape[1]
+        index = faiss.IndexFlatL2(dimension)
+        index.add(embeddings)
+
+        RAG_INDEX = index
+        RAG_CHUNKS = chunks
+        RAG_ERROR = None
+        return index, chunks
+    except Exception as exc:
+        RAG_ERROR = str(exc)
+        RAG_CHUNKS = chunks
+        return None, chunks
 
 
 def transcribe_audio(file_path: str) -> str:
@@ -399,6 +503,73 @@ def sync_attendance() -> Any:
     return jsonify({"message": "Attendance synced successfully"})
 
 
+@app.route("/api/ask-policy", methods=["POST"])
+def ask_policy() -> Any:
+    payload = request.get_json(silent=True) or {}
+    query = str(payload.get("query") or "").strip()
+
+    if not query:
+        return jsonify({"error": "Query is required"}), 400
+
+    try:
+        index, chunks = initialize_rag_index()
+        context_chunks = chunks[:3]
+
+        if index is not None and chunks:
+            try:
+                from sentence_transformers import SentenceTransformer
+                import numpy as np
+
+                global RAG_EMBEDDING_MODEL
+                if RAG_EMBEDDING_MODEL is None:
+                    RAG_EMBEDDING_MODEL = SentenceTransformer("all-MiniLM-L6-v2")
+
+                embedding = RAG_EMBEDDING_MODEL.encode(
+                    [query],
+                    convert_to_numpy=True,
+                    normalize_embeddings=True,
+                )
+                embedding = np.asarray(embedding, dtype="float32")
+                _, indices = index.search(embedding, min(3, len(chunks)))
+                context_chunks = []
+                for idx in indices[0]:
+                    if 0 <= idx < len(chunks):
+                        context_chunks.append(chunks[idx])
+                if not context_chunks:
+                    context_chunks = chunks[:3]
+            except Exception:
+                context_chunks = chunks[:3]
+
+        context = "\n\n".join(context_chunks)
+        prompt = (
+            "You are an HR assistant. Answer the user's question based ONLY "
+            "on the provided context. If the context does not contain the "
+            "answer, say 'I cannot find the answer in the policy.'\n\n"
+            f"Context:\n{context}\n\nQuestion:\n{query}"
+        )
+
+        llm = get_llm()
+        if llm is None:
+            answer = "I cannot find the answer in the policy."
+        else:
+            response = llm(prompt, max_tokens=220, temperature=0.0)
+            try:
+                answer = response["choices"][0]["text"].strip()
+            except Exception:
+                answer = str(response)
+
+        if not answer:
+            answer = "I cannot find the answer in the policy."
+        return jsonify({"answer": answer})
+    except Exception as exc:
+        return jsonify(
+            {
+                "answer": "I cannot find the answer in the policy.",
+                "error": str(exc),
+            }
+        )
+
+
 @app.route("/api/submit-leave", methods=["POST"])
 def submit_leave() -> Any:
     data = request.json or {}
@@ -570,7 +741,7 @@ def upload_resume() -> Any:
             "You are an HR data extractor. Read the following resume text. "
             "Extract the candidate's name, email, a list of core technical skills, "
             "and total years of experience as an integer. Output ONLY valid JSON in this exact format: "
-            '{"candidate_name": "...", "email": "...", "skills": ["..."], "years_of_experience": X}. ' 
+            '{"candidate_name": "...", "email": "...", "skills": ["..."], "years_of_experience": X}. '
             "No markdown, no conversational text."
         )
         prompt = f"{system_prompt}\n\nResume Text:\n{raw_text}\n\nJSON:"
@@ -597,7 +768,9 @@ def upload_resume() -> Any:
 
         if not parsed:
             return (
-                jsonify({"error": "Failed to parse LLM output as JSON", "raw": output_text}),
+                jsonify(
+                    {"error": "Failed to parse LLM output as JSON", "raw": output_text}
+                ),
                 502,
             )
 
