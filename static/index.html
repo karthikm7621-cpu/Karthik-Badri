@@ -236,6 +236,20 @@
       </form>
       <p class="feedback" id="hr-feedback" aria-live="polite"></p>
     </section>
+
+    <section class="card">
+      <div class="card__header">
+        <div>
+          <h2>Policy Chatbot</h2>
+          <p>Ask policy questions and get context-aware answers from the offline handbook.</p>
+        </div>
+      </div>
+      <div id="policy-chat-history" class="policy-chat-history" aria-live="polite"></div>
+      <form id="policy-chat-form" class="policy-chat-form" novalidate>
+        <input id="policy-chat-input" type="text" placeholder="Ask about leave, remote work, or benefits..." autocomplete="off">
+        <button type="submit">Send</button>
+      </form>
+    </section>
   </main>
 
   <script src="/static/db.js"></script>
