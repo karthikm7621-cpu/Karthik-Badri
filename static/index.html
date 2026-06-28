@@ -159,6 +159,16 @@
           <textarea id="attendance-notes" name="notes" rows="4" placeholder="Optional notes for the shift"></textarea>
         </label>
         <button type="submit">Save Attendance</button>
+        
+        <div class="biometric-section" style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--border);">
+          <button type="button" id="start-biometric-btn" class="secondary-btn">Log Attendance via Face</button>
+          <div id="biometric-container" class="hidden" style="margin-top: 1rem; position: relative;">
+            <video id="webcam" autoplay playsinline style="width: 100%; border-radius: 16px; border: 2px solid var(--accent);"></video>
+            <div class="scanner-overlay" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: 4px solid rgba(56, 189, 248, 0.5); border-radius: 16px; box-sizing: border-box; pointer-events: none;"></div>
+            <button type="button" id="capture-biometric-btn" style="margin-top: 0.8rem;">Verify Face</button>
+            <canvas id="biometric-canvas" class="hidden"></canvas>
+          </div>
+        </div>
       </form>
       <p class="feedback" id="attendance-feedback" aria-live="polite"></p>
     </section>
