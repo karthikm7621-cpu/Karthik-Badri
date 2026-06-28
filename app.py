@@ -93,6 +93,17 @@ class AttendanceRecord(db.Model):
     source_image_path = db.Column(db.String(255))
 
 
+class ExpenseReimbursement(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    employee_id = db.Column(db.Integer, db.ForeignKey("employee.id"), nullable=True)
+    vendor = db.Column(db.String(150), nullable=True)
+    date = db.Column(db.String(30), nullable=True)
+    amount = db.Column(db.String(50), nullable=True)
+    currency = db.Column(db.String(20), nullable=True)
+    status = db.Column(db.String(30), default="Pending")
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+
 def get_llm() -> Any:
     """Loads a lightweight local LLM via llama-cpp-python."""
     model_path = os.environ.get("LLM_MODEL_PATH", "./models/model.gguf")
@@ -146,6 +157,82 @@ def process_leave_with_llm(raw_text: str) -> Dict[str, Any]:
             "start_date": "1970-01-01",
             "end_date": "1970-01-01",
             "reason": "Failed to parse",
+        }
+
+
+def get_ocr_reader() -> Any:
+    try:
+        from easyocr import Reader
+    except ImportError:
+        return None
+
+    try:
+        return Reader(["en"], gpu=False)
+    except Exception:
+        return None
+
+
+def extract_text_from_image(image_path: str) -> str:
+    if not image_path or not os.path.exists(image_path):
+        return ""
+
+    try:
+        import onnxruntime as ort
+
+        providers = ort.get_available_providers()
+        if "CPUExecutionProvider" not in providers:
+            return ""
+    except Exception:
+        return ""
+
+    try:
+        from PIL import Image
+
+        with Image.open(image_path) as image:
+            image.convert("RGB").save(image_path)
+    except Exception:
+        pass
+
+    reader = get_ocr_reader()
+    if reader is None:
+        return ""
+
+    try:
+        results = reader.readtext(image_path, detail=0, paragraph=True)
+        text = " ".join(part for part in results if part).strip()
+        return text
+    except Exception:
+        return ""
+
+
+def process_expense_with_llm(raw_text: str) -> Dict[str, Any]:
+    llm = get_llm()
+    if not llm:
+        return {
+            "vendor": "Unknown",
+            "date": datetime.utcnow().date().isoformat(),
+            "amount": "0.00",
+            "currency": "USD",
+        }
+
+    system_prompt = (
+        "You are a strict JSON data extractor. "
+        "Extract 'vendor', 'date', 'amount', and 'currency' from the receipt text. "
+        "Return ONLY valid JSON with keys: vendor, date, amount, currency. No other text."
+    )
+    prompt = f"{system_prompt}\nText: {raw_text}\nJSON:"
+
+    response = llm(prompt, max_tokens=120, temperature=0.1)
+    try:
+        output_text = response["choices"][0]["text"].strip()
+        parsed = json.loads(output_text)
+        return parsed
+    except Exception:
+        return {
+            "vendor": "Unknown",
+            "date": datetime.utcnow().date().isoformat(),
+            "amount": "0.00",
+            "currency": "USD",
         }
 
 
@@ -301,6 +388,56 @@ def submit_audio_leave() -> Any:
                 "status": "success",
                 "transcription": transcribed_text,
                 "extracted_data": extracted_data,
+            }
+        )
+    finally:
+        if os.path.exists(temp_path):
+            os.remove(temp_path)
+
+
+@app.route("/api/submit-receipt", methods=["POST"])
+def submit_receipt() -> Any:
+    if "receipt" not in request.files:
+        return jsonify({"error": "No receipt image provided"}), 400
+
+    receipt_file = request.files["receipt"]
+    employee_id = request.form.get("employee_id", "").strip()
+
+    temp_file = tempfile.NamedTemporaryFile(
+        suffix=".png", delete=False
+    )
+    temp_path = temp_file.name
+    temp_file.close()
+
+    try:
+        receipt_file.save(temp_path)
+        raw_text = extract_text_from_image(temp_path)
+        structured_data = process_expense_with_llm(raw_text)
+
+        expense = ExpenseReimbursement(
+            employee_id=int(employee_id) if employee_id.isdigit() else None,
+            vendor=structured_data.get("vendor", "Unknown"),
+            date=structured_data.get("date", ""),
+            amount=structured_data.get("amount", "0.00"),
+            currency=structured_data.get("currency", "USD"),
+            status="Pending",
+        )
+        db.session.add(expense)
+        db.session.commit()
+
+        return jsonify(
+            {
+                "status": "success",
+                "ocr_text": raw_text,
+                "extracted_data": structured_data,
+                "expense": {
+                    "id": expense.id,
+                    "vendor": expense.vendor,
+                    "date": expense.date,
+                    "amount": expense.amount,
+                    "currency": expense.currency,
+                    "status": expense.status,
+                },
             }
         )
     finally:
