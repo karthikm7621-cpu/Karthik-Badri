@@ -10,9 +10,34 @@ Welcome to the **CPU-First EMS**, built for the **CPU-First Hackathon**. This pr
 
 The core mission of our project is to demonstrate that advanced AI data extraction can be done **100% offline, running on standard CPU hardware**. We eliminate reliance on cloud APIs and expensive GPU clusters. 
 
+<<<<<<< HEAD
+## How to Run Locally
+
+1. Install tooling:
+   ```powershell
+   python -m pip install --upgrade pip pre-commit black flake8
+   npm install --save-dev eslint
+   pre-commit install
+   ```
+2. Start the Flask server from the project root:
+   ```powershell
+   python -m flask run
+   ```
+   If your Flask app is not configured through `FLASK_APP`, set it explicitly:
+   ```powershell
+   $env:FLASK_APP = 'app.py'
+   python -m flask run
+   ```
+3. Open the app in your browser at `http://127.0.0.1:5000/`.
+4. Verify the service worker is registered by opening DevTools and checking the Application tab.
+5. Test offline behavior by switching the Network tab to `Offline` and refreshing the page; the UI should still load.
+
+## Add your files
+=======
 How do we turn unstructured input into structured data?
 1. **Smart Leave Parser**: Employees can simply type a messy message (e.g., *"I need to take off next Tuesday because I'm sick"*) or upload an audio voice note. Using **llama.cpp** (for text intent extraction) and **Whisper.cpp** (for offline audio transcription), we extract the exact intent, requested dates, and reason, converting it into a clean JSON payload that gets saved directly to our database.
 2. **Smart Attendance OCR**: Employees upload an image of a handwritten timesheet or ID badge. We process this using a lightweight **ONNX Runtime (CPU)** vision model to extract the timestamp and employee ID, converting the visual unstructured data into structured, queryable attendance logs.
+>>>>>>> 078eb056c6f7f9778ac3dcabe8c6d46aa4178754
 
 ---
 

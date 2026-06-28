@@ -1,0 +1,19 @@
+{
+  "name": "CPU-First Employee Management System",
+  "short_name": "CPU-EMS",
+  "description": "Offline-first employee attendance and leave management for the hackathon.",
+  "start_url": ".",
+  "display": "standalone",
+  "background_color": "#08101f",
+  "theme_color": "#38bdf8",
+  "orientation": "portrait-primary",
+  "scope": ".",
+  "icons": [
+    {
+      "src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'%3E%3Crect width='192' height='192' fill='%2338bdf8'/%3E%3Ctext x='50%25' y='55%25' font-size='72' text-anchor='middle' fill='%2308121e' font-family='Segoe UI, sans-serif'%3ECPU%3C/text%3E%3C/svg%3E",
+      "sizes": "192x192",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

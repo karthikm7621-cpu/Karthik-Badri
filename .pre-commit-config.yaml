@@ -1,0 +1,35 @@
+# Install tooling before committing:
+#   python -m pip install --upgrade pre-commit black flake8
+#   npm install --save-dev eslint
+#   pre-commit install
+
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.5.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+
+  - repo: https://github.com/psf/black
+    rev: 24.3.0
+    hooks:
+      - id: black
+        language_version: python3
+
+  - repo: https://gitlab.com/pycqa/flake8
+    rev: 7.0.0
+    hooks:
+      - id: flake8
+        language_version: python3
+        additional_dependencies: [flake8]
+
+  - repo: https://github.com/pre-commit/mirrors-eslint
+    rev: v9.0.0
+    hooks:
+      - id: eslint
+        name: eslint --fix
+        entry: eslint --fix
+        language: node
+        types: [javascript]
+        files: \.(js|jsx|ts|tsx)$
+        additional_dependencies: [eslint@9.0.0]
