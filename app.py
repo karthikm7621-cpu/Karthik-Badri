@@ -5,15 +5,22 @@ from datetime import datetime
 from typing import Any, Dict
 
 from flask import Flask, jsonify, request, send_from_directory
-from flask_cors import CORS
 from flask_sqlalchemy import SQLAlchemy
+from werkzeug.security import check_password_hash, generate_password_hash
+
+try:
+    from flask_cors import CORS
+except ImportError:  # pragma: no cover - optional dependency
+    CORS = None
 
 app = Flask(__name__)
-CORS(app)
+if CORS is not None:
+    CORS(app)
 
 # Use a local SQLite database for offline-first capability
 app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///ems.db"
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
+app.config["JSON_SORT_KEYS"] = False
 
 db = SQLAlchemy(app)
 
@@ -34,6 +41,37 @@ class Employee(db.Model):
     full_name = db.Column(db.String(150), nullable=False)
     department = db.Column(db.String(100))
     role = db.Column(db.String(100))
+    username = db.Column(db.String(80), unique=True, nullable=True)
+    password_hash = db.Column(db.String(255), nullable=True)
+    user_role = db.Column(db.String(40), nullable=True)
+    status = db.Column(db.String(20), nullable=True, default="Pending")
+    stream = db.Column(db.String(80), nullable=True)
+
+
+class User(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    username = db.Column(db.String(80), unique=True, nullable=False)
+    password_hash = db.Column(db.String(255), nullable=False)
+    role = db.Column(db.String(40), nullable=False, default="Employee")
+    status = db.Column(db.String(20), nullable=False, default="Pending")
+    stream = db.Column(db.String(80), nullable=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "id": self.id,
+            "username": self.username,
+            "role": self.role,
+            "status": self.status,
+            "stream": self.stream,
+            "created_at": self.created_at.isoformat() if self.created_at else None,
+        }
+
+
+class Stream(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(80), unique=True, nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
 
 class LeaveRequest(db.Model):
@@ -109,6 +147,30 @@ def process_leave_with_llm(raw_text: str) -> Dict[str, Any]:
             "end_date": "1970-01-01",
             "reason": "Failed to parse",
         }
+
+
+def get_request_data() -> Dict[str, Any]:
+    data = request.get_json(silent=True)
+    if isinstance(data, dict):
+        return data
+    return request.form.to_dict()
+
+
+def resolve_authenticated_user() -> Any:
+    payload = get_request_data()
+    username = (payload.get("username") or request.headers.get("X-Username", "")).strip()
+    password = (payload.get("password") or request.headers.get("X-Password", "")).strip()
+    if not username or not password:
+        return None
+
+    user = User.query.filter_by(username=username).first()
+    if not user or not check_password_hash(user.password_hash, password):
+        return None
+    return user
+
+
+def is_owner(user: Any) -> bool:
+    return user is not None and user.role in {"Main Owner", "Delegated Owner"}
 
 
 @app.route("/api/employees", methods=["GET"])
@@ -246,12 +308,166 @@ def submit_audio_leave() -> Any:
             os.remove(temp_path)
 
 
+@app.route("/api/register", methods=["POST"])
+def register_user() -> Any:
+    payload = get_request_data()
+    username = (payload.get("username") or "").strip()
+    password = (payload.get("password") or "").strip()
+    stream = (payload.get("stream") or "").strip()
+
+    if not username or not password:
+        return jsonify({"success": False, "message": "Username and password are required."}), 400
+
+    if User.query.filter_by(username=username).first():
+        return jsonify({"success": False, "message": "Username already exists."}), 409
+
+    user = User(
+        username=username,
+        password_hash=generate_password_hash(password),
+        role="Employee",
+        status="Pending",
+        stream=stream or None,
+    )
+    db.session.add(user)
+    db.session.commit()
+
+    return jsonify({"success": True, "message": "Registration submitted for approval.", "user": user.to_dict()})
+
+
+@app.route("/api/login", methods=["POST"])
+def login_user() -> Any:
+    payload = get_request_data()
+    username = (payload.get("username") or "").strip()
+    password = (payload.get("password") or "").strip()
+
+    if not username or not password:
+        return jsonify({"success": False, "message": "Username and password are required."}), 400
+
+    user = User.query.filter_by(username=username).first()
+    if not user or not check_password_hash(user.password_hash, password):
+        return jsonify({"success": False, "message": "Invalid credentials."}), 401
+
+    return jsonify(
+        {
+            "success": True,
+            "message": "Login successful.",
+            "user": {
+                "id": user.id,
+                "username": user.username,
+                "role": user.role,
+                "status": user.status,
+                "stream": user.stream,
+            },
+        }
+    )
+
+
+@app.route("/api/pending-users", methods=["GET"])
+def pending_users() -> Any:
+    auth_user = resolve_authenticated_user()
+    if not auth_user or not is_owner(auth_user):
+        return jsonify({"success": False, "message": "Owner access required."}), 403
+
+    users = User.query.filter_by(status="Pending").order_by(User.created_at.asc()).all()
+    return jsonify({"success": True, "users": [user.to_dict() for user in users]})
+
+
+@app.route("/api/approve-user", methods=["POST"])
+def approve_user() -> Any:
+    auth_user = resolve_authenticated_user()
+    if not auth_user or not is_owner(auth_user):
+        return jsonify({"success": False, "message": "Owner access required."}), 403
+
+    payload = get_request_data()
+    username = (payload.get("username") or "").strip()
+    if not username:
+        return jsonify({"success": False, "message": "Username is required."}), 400
+
+    user = User.query.filter_by(username=username).first()
+    if not user:
+        return jsonify({"success": False, "message": "User not found."}), 404
+
+    user.status = "Active"
+    db.session.commit()
+    return jsonify({"success": True, "message": "User approved.", "user": user.to_dict()})
+
+
+@app.route("/api/delegate-owner", methods=["POST"])
+def delegate_owner() -> Any:
+    auth_user = resolve_authenticated_user()
+    if not auth_user or auth_user.role != "Main Owner":
+        return jsonify({"success": False, "message": "Main Owner access required."}), 403
+
+    payload = get_request_data()
+    username = (payload.get("username") or "").strip()
+    if not username:
+        return jsonify({"success": False, "message": "Username is required."}), 400
+
+    user = User.query.filter_by(username=username).first()
+    if not user:
+        return jsonify({"success": False, "message": "User not found."}), 404
+
+    if user.role not in {"Employee", "Delegated Owner"}:
+        return jsonify({"success": False, "message": "Only Employee or Delegated Owner can be upgraded."}), 400
+
+    user.role = "Delegated Owner"
+    db.session.commit()
+    return jsonify({"success": True, "message": "User delegated owner access.", "user": user.to_dict()})
+
+
+@app.route("/api/add-stream", methods=["POST"])
+def add_stream() -> Any:
+    auth_user = resolve_authenticated_user()
+    if not auth_user or not is_owner(auth_user):
+        return jsonify({"success": False, "message": "Owner access required."}), 403
+
+    payload = get_request_data()
+    name = (payload.get("name") or "").strip()
+    if not name:
+        return jsonify({"success": False, "message": "Stream name is required."}), 400
+
+    stream = Stream.query.filter_by(name=name).first()
+    if not stream:
+        stream = Stream(name=name)
+        db.session.add(stream)
+        db.session.commit()
+
+    return jsonify({"success": True, "message": "Stream added.", "stream": {"name": stream.name}})
+
+
+@app.before_request
+def seed_default_users_if_needed() -> None:
+    if not app.config.get("_seeded", False):
+        with app.app_context():
+            db.create_all()
+            if not User.query.filter_by(username="Owner1").first():
+                db.session.add(
+                    User(
+                        username="Owner1",
+                        password_hash=generate_password_hash("Karthik@7621"),
+                        role="Main Owner",
+                        status="Active",
+                        stream="Backend",
+                    )
+                )
+            if not User.query.filter_by(username="karthik").first():
+                db.session.add(
+                    User(
+                        username="karthik",
+                        password_hash=generate_password_hash("Karthik@7621"),
+                        role="Employee",
+                        status="Active",
+                        stream="Frontend",
+                    )
+                )
+            db.session.commit()
+        app.config["_seeded"] = True
+
+
 # Simple dummy test for pytest to pick up and pass the pipeline easily
 def test_dummy_pipeline_check() -> None:
     assert True
 
 
 if __name__ == "__main__":
-    with app.app_context():
-        db.create_all()
     app.run(debug=True, host="0.0.0.0", port=5000)
