@@ -104,6 +104,16 @@ class ExpenseReimbursement(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
 
+class HRTicket(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    employee_id = db.Column(db.Integer, db.ForeignKey("employee.id"), nullable=False)
+    original_language = db.Column(db.String(10), nullable=True)
+    category = db.Column(db.String(50), nullable=True)
+    english_summary = db.Column(db.Text, nullable=True)
+    status = db.Column(db.String(30), default="Pending")
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+
 def get_llm() -> Any:
     """Loads a lightweight local LLM via llama-cpp-python."""
     model_path = os.environ.get("LLM_MODEL_PATH", "./models/model.gguf")
@@ -218,7 +228,8 @@ def process_expense_with_llm(raw_text: str) -> Dict[str, Any]:
     system_prompt = (
         "You are a strict JSON data extractor. "
         "Extract 'vendor', 'date', 'amount', and 'currency' from the receipt text. "
-        "Return ONLY valid JSON with keys: vendor, date, amount, currency. No other text."
+        "Return ONLY valid JSON with keys: vendor, date, amount, currency. "
+        "No other text."
     )
     prompt = f"{system_prompt}\nText: {raw_text}\nJSON:"
 
@@ -236,6 +247,40 @@ def process_expense_with_llm(raw_text: str) -> Dict[str, Any]:
         }
 
 
+def parse_hr_ticket(raw_text: str) -> Dict[str, Any]:
+    """Parses non-English text to identify language, translate, and categorize."""
+    llm = get_llm()
+    if not llm:
+        return {
+            "original_language": "unknown",
+            "category": "other",
+            "english_summary": "Mocked summary due to missing model",
+        }
+
+    system_prompt = (
+        "You are an HR classification system. Read the following text. "
+        "1. Identify the ISO language code. "
+        "2. Translate the core issue to English. "
+        "3. Categorize it as 'payroll', 'equipment', 'leave', or 'other'. "
+        'Output ONLY valid JSON in this format: {"original_language": "te", '
+        '"category": "payroll", "english_summary": "..."}. '
+        "No markdown, no explanations."
+    )
+    prompt = f"{system_prompt}\nText: {raw_text}\nJSON:"
+
+    response = llm(prompt, max_tokens=200, temperature=0.1)
+    try:
+        output_text = response["choices"][0]["text"].strip()
+        parsed = json.loads(output_text)
+        return parsed
+    except Exception:
+        return {
+            "original_language": "unknown",
+            "category": "other",
+            "english_summary": "Failed to parse AI output",
+        }
+
+
 def get_request_data() -> Dict[str, Any]:
     data = request.get_json(silent=True)
     if isinstance(data, dict):
@@ -245,8 +290,12 @@ def get_request_data() -> Dict[str, Any]:
 
 def resolve_authenticated_user() -> Any:
     payload = get_request_data()
-    username = (payload.get("username") or request.headers.get("X-Username", "")).strip()
-    password = (payload.get("password") or request.headers.get("X-Password", "")).strip()
+    username = (
+        payload.get("username") or request.headers.get("X-Username", "")
+    ).strip()
+    password = (
+        payload.get("password") or request.headers.get("X-Password", "")
+    ).strip()
     if not username or not password:
         return None
 
@@ -403,9 +452,7 @@ def submit_receipt() -> Any:
     receipt_file = request.files["receipt"]
     employee_id = request.form.get("employee_id", "").strip()
 
-    temp_file = tempfile.NamedTemporaryFile(
-        suffix=".png", delete=False
-    )
+    temp_file = tempfile.NamedTemporaryFile(suffix=".png", delete=False)
     temp_path = temp_file.name
     temp_file.close()
 
@@ -445,6 +492,36 @@ def submit_receipt() -> Any:
             os.remove(temp_path)
 
 
+@app.route("/api/submit-hr-ticket", methods=["POST"])
+def submit_hr_ticket() -> Any:
+    data = request.json or {}
+    unstructured_text = data.get("raw_text", "")
+    employee_id = data.get("employee_id", 1)
+
+    if not unstructured_text:
+        return jsonify({"error": "No raw_text provided"}), 400
+
+    extracted_data = parse_hr_ticket(unstructured_text)
+
+    ticket = HRTicket(
+        employee_id=employee_id,
+        original_language=extracted_data.get("original_language", "unknown"),
+        category=extracted_data.get("category", "other"),
+        english_summary=extracted_data.get("english_summary", "Unknown issue"),
+        status="Pending",
+    )
+    db.session.add(ticket)
+    db.session.commit()
+
+    return jsonify(
+        {
+            "status": "success",
+            "ticket_id": ticket.id,
+            "extracted_data": extracted_data,
+        }
+    )
+
+
 @app.route("/api/register", methods=["POST"])
 def register_user() -> Any:
     payload = get_request_data()
@@ -453,7 +530,12 @@ def register_user() -> Any:
     stream = (payload.get("stream") or "").strip()
 
     if not username or not password:
-        return jsonify({"success": False, "message": "Username and password are required."}), 400
+        return (
+            jsonify(
+                {"success": False, "message": "Username and password are required."}
+            ),
+            400,
+        )
 
     if User.query.filter_by(username=username).first():
         return jsonify({"success": False, "message": "Username already exists."}), 409
@@ -468,7 +550,13 @@ def register_user() -> Any:
     db.session.add(user)
     db.session.commit()
 
-    return jsonify({"success": True, "message": "Registration submitted for approval.", "user": user.to_dict()})
+    return jsonify(
+        {
+            "success": True,
+            "message": "Registration submitted for approval.",
+            "user": user.to_dict(),
+        }
+    )
 
 
 @app.route("/api/login", methods=["POST"])
@@ -478,7 +566,12 @@ def login_user() -> Any:
     password = (payload.get("password") or "").strip()
 
     if not username or not password:
-        return jsonify({"success": False, "message": "Username and password are required."}), 400
+        return (
+            jsonify(
+                {"success": False, "message": "Username and password are required."}
+            ),
+            400,
+        )
 
     user = User.query.filter_by(username=username).first()
     if not user or not check_password_hash(user.password_hash, password):
@@ -526,14 +619,19 @@ def approve_user() -> Any:
 
     user.status = "Active"
     db.session.commit()
-    return jsonify({"success": True, "message": "User approved.", "user": user.to_dict()})
+    return jsonify(
+        {"success": True, "message": "User approved.", "user": user.to_dict()}
+    )
 
 
 @app.route("/api/delegate-owner", methods=["POST"])
 def delegate_owner() -> Any:
     auth_user = resolve_authenticated_user()
     if not auth_user or auth_user.role != "Main Owner":
-        return jsonify({"success": False, "message": "Main Owner access required."}), 403
+        return (
+            jsonify({"success": False, "message": "Main Owner access required."}),
+            403,
+        )
 
     payload = get_request_data()
     username = (payload.get("username") or "").strip()
@@ -545,11 +643,25 @@ def delegate_owner() -> Any:
         return jsonify({"success": False, "message": "User not found."}), 404
 
     if user.role not in {"Employee", "Delegated Owner"}:
-        return jsonify({"success": False, "message": "Only Employee or Delegated Owner can be upgraded."}), 400
+        return (
+            jsonify(
+                {
+                    "success": False,
+                    "message": "Only Employee or Delegated Owner can be upgraded.",
+                }
+            ),
+            400,
+        )
 
     user.role = "Delegated Owner"
     db.session.commit()
-    return jsonify({"success": True, "message": "User delegated owner access.", "user": user.to_dict()})
+    return jsonify(
+        {
+            "success": True,
+            "message": "User delegated owner access.",
+            "user": user.to_dict(),
+        }
+    )
 
 
 @app.route("/api/add-stream", methods=["POST"])
@@ -569,7 +681,9 @@ def add_stream() -> Any:
         db.session.add(stream)
         db.session.commit()
 
-    return jsonify({"success": True, "message": "Stream added.", "stream": {"name": stream.name}})
+    return jsonify(
+        {"success": True, "message": "Stream added.", "stream": {"name": stream.name}}
+    )
 
 
 @app.before_request
