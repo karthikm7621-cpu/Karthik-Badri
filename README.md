@@ -8,6 +8,27 @@ To make it easy for you to get started with GitLab, here's a list of recommended
 
 Already a pro? Just edit this README.md and make it your own. Want to make it easy? [Use the template at the bottom](#editing-this-readme)!
 
+## How to Run Locally
+
+1. Install tooling:
+   ```powershell
+   python -m pip install --upgrade pip pre-commit black flake8
+   npm install --save-dev eslint
+   pre-commit install
+   ```
+2. Start the Flask server from the project root:
+   ```powershell
+   python -m flask run
+   ```
+   If your Flask app is not configured through `FLASK_APP`, set it explicitly:
+   ```powershell
+   $env:FLASK_APP = 'app.py'
+   python -m flask run
+   ```
+3. Open the app in your browser at `http://127.0.0.1:5000/`.
+4. Verify the service worker is registered by opening DevTools and checking the Application tab.
+5. Test offline behavior by switching the Network tab to `Offline` and refreshing the page; the UI should still load.
+
 ## Add your files
 
 * [Create](https://docs.gitlab.com/user/project/repository/web_editor/#create-a-file) or [upload](https://docs.gitlab.com/user/project/repository/web_editor/#upload-a-file) files
