@@ -48,6 +48,15 @@ class Employee(db.Model):
     stream = db.Column(db.String(80), nullable=True)
 
 
+class Candidate(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(200), nullable=True)
+    email = db.Column(db.String(200), nullable=True)
+    skills = db.Column(db.Text, nullable=True)
+    years_of_experience = db.Column(db.Integer, nullable=True)
+    status = db.Column(db.String(40), nullable=False, default="New")
+
+
 class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(80), unique=True, nullable=False)
@@ -213,6 +222,37 @@ def extract_text_from_image(image_path: str) -> str:
         return text
     except Exception:
         return ""
+
+
+def extract_text_from_pdf(file_path: str) -> str:
+    """Extracts and returns text from a PDF using PyMuPDF (fitz).
+
+    The function imports PyMuPDF locally so the app can still run if the
+    dependency is not installed (useful for CI where it's optional).
+    """
+    if not file_path or not os.path.exists(file_path):
+        return ""
+
+    try:
+        import fitz
+    except Exception:
+        return ""
+
+    text_parts = []
+    try:
+        doc = fitz.open(file_path)
+        for page in doc:
+            try:
+                page_text = page.get_text()
+            except Exception:
+                page_text = ""
+            if page_text:
+                text_parts.append(page_text)
+        doc.close()
+    except Exception:
+        return ""
+
+    return "\n".join(part for part in text_parts if part).strip()
 
 
 def process_expense_with_llm(raw_text: str) -> Dict[str, Any]:
@@ -490,6 +530,110 @@ def submit_receipt() -> Any:
     finally:
         if os.path.exists(temp_path):
             os.remove(temp_path)
+
+
+@app.route("/api/upload-resume", methods=["POST"])
+def upload_resume() -> Any:
+    """Upload a PDF resume, extract text, run the local LLM to parse JSON,
+    store a Candidate record, and ensure the temporary file is deleted.
+
+    This endpoint requires Owner access.
+    """
+    auth_user = resolve_authenticated_user()
+    if not auth_user or not is_owner(auth_user):
+        return jsonify({"success": False, "message": "Owner access required."}), 403
+
+    if "resume" not in request.files:
+        return jsonify({"error": "No resume file provided"}), 400
+
+    resume_file = request.files["resume"]
+    filename = (resume_file.filename or "").lower()
+    if not filename.endswith(".pdf"):
+        return jsonify({"error": "Only PDF resumes are accepted"}), 400
+
+    temp_file = tempfile.NamedTemporaryFile(suffix=".pdf", delete=False)
+    temp_path = temp_file.name
+    temp_file.close()
+
+    try:
+        resume_file.save(temp_path)
+        raw_text = extract_text_from_pdf(temp_path)
+
+        llm = get_llm()
+        if not llm:
+            return (
+                jsonify({"error": "LLM model not available on server"}),
+                503,
+            )
+
+        system_prompt = (
+            "You are an HR data extractor. Read the following resume text. "
+            "Extract the candidate's name, email, a list of core technical skills, "
+            "and total years of experience as an integer. Output ONLY valid JSON in this exact format: "
+            '{"candidate_name": "...", "email": "...", "skills": ["..."], "years_of_experience": X}. ' 
+            "No markdown, no conversational text."
+        )
+        prompt = f"{system_prompt}\n\nResume Text:\n{raw_text}\n\nJSON:"
+
+        response = llm(prompt, max_tokens=256, temperature=0.0)
+
+        try:
+            output_text = response["choices"][0]["text"].strip()
+        except Exception:
+            output_text = str(response)
+
+        parsed = None
+        try:
+            parsed = json.loads(output_text)
+        except Exception:
+            import re
+
+            m = re.search(r"\{.*\}", output_text, re.S)
+            if m:
+                try:
+                    parsed = json.loads(m.group(0))
+                except Exception:
+                    parsed = None
+
+        if not parsed:
+            return (
+                jsonify({"error": "Failed to parse LLM output as JSON", "raw": output_text}),
+                502,
+            )
+
+        try:
+            skills_val = parsed.get("skills") or []
+            if not isinstance(skills_val, list):
+                skills_val = [str(skills_val)]
+
+            candidate = Candidate(
+                name=parsed.get("candidate_name"),
+                email=parsed.get("email"),
+                skills=json.dumps(skills_val),
+                years_of_experience=int(parsed.get("years_of_experience") or 0),
+                status="New",
+            )
+            db.session.add(candidate)
+            db.session.commit()
+        except Exception as e:
+            return jsonify({"error": "Failed to save candidate", "detail": str(e)}), 500
+
+        return (
+            jsonify(
+                {
+                    "status": "success",
+                    "candidate_id": candidate.id,
+                    "extracted": parsed,
+                }
+            ),
+            200,
+        )
+    finally:
+        if os.path.exists(temp_path):
+            try:
+                os.remove(temp_path)
+            except Exception:
+                pass
 
 
 @app.route("/api/submit-hr-ticket", methods=["POST"])
