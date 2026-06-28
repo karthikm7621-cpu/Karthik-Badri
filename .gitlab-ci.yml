@@ -1,0 +1,55 @@
+image: python:3.10-slim
+
+stages:
+  - setup
+  - format
+  - lint
+  - type_check
+  - security
+  - test
+
+variables:
+  PIP_CACHE_DIR: "$CI_PROJECT_DIR/.cache/pip"
+
+cache:
+  paths:
+    - .cache/pip
+
+before_script:
+  # Set up virtual environment and install dependencies securely
+  - python -m venv venv
+  - source venv/bin/activate
+  - pip install --upgrade pip
+  - pip install -r requirements.txt
+
+setup_env:
+  stage: setup
+  script:
+    - python -c "import flask; print(f'Flask {flask.__version__} installed successfully')"
+  
+format_code:
+  stage: format
+  script:
+    - black --check .
+
+lint_code:
+  stage: lint
+  script:
+    - flake8 .
+
+type_check:
+  stage: type_check
+  script:
+    # Ignoring errors on missing type hints for external libraries
+    - mypy --ignore-missing-imports .
+
+security_scan:
+  stage: security
+  script:
+    # Run bandit to check for common security issues (e.g., SQL injection, hardcoded passwords)
+    - bandit -r . -f custom
+
+test_app:
+  stage: test
+  script:
+    - pytest -v
