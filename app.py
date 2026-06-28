@@ -1,4 +1,9 @@
-import json
+# To run this Flask application locally, execute:
+# python app.py
+# (It will automatically create the ems.db SQLite database file on first run)
+
+from flask import Flask, request, jsonify, send_from_directory
+from models import db, Employee, LeaveRequest, AttendanceRecord
 import os
 from datetime import datetime
 from typing import Any, Dict
@@ -11,8 +16,14 @@ from models import AttendanceRecord, Employee, LeaveRequest, db
 app = Flask(__name__)
 CORS(app)
 
-app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///ems.db"
-app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
+
+@app.route("/")
+def index():
+    return send_from_directory("static", "index.html")
+
+# Use a local SQLite database for offline-first capability
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///ems.db'
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 db.init_app(app)
 
