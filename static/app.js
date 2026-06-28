@@ -49,6 +49,12 @@
   const submitExpenseBtn = document.getElementById("submit-expense-btn");
   const receiptFeedback = document.getElementById("receipt-feedback");
 
+  // HR Helpdesk UI
+  const hrForm = document.getElementById("hr-form");
+  const hrFeedback = document.getElementById("hr-feedback");
+  const hrEmployee = document.getElementById("hr-employee");
+  const hrRequest = document.getElementById("hr-request");
+
   // Audio UI
   let mediaRecorder = null;
   let audioChunks = [];
@@ -87,6 +93,7 @@
     attendanceEmployee.innerHTML = employeeOptions;
     leaveEmployee.innerHTML = employeeOptions;
     receiptEmployee.innerHTML = employeeOptions;
+    hrEmployee.innerHTML = employeeOptions;
     delegateUserSelect.innerHTML = employeeOptions;
     attendanceDate.value = new Date().toISOString().slice(0, 10);
   }
@@ -396,6 +403,28 @@
     await updateQueueCount();
   }
 
+  async function handleHRSubmission(event) {
+    event.preventDefault();
+    const payload = {
+      employee_id: hrEmployee.value,
+      raw_text: hrRequest.value.trim(),
+    };
+
+    try {
+      if (!navigator.onLine) throw new Error("offline");
+      await sendPayload("submit-hr-ticket", payload);
+      setFeedback(hrFeedback, "Ticket submitted successfully.", "success");
+      hrForm.reset();
+    } catch (error) {
+      if (queue && typeof queue.addToQueue === "function") {
+        await queue.addToQueue("submit-hr-ticket", payload);
+      }
+      setFeedback(hrFeedback, "Ticket saved offline. Will be submitted to HR when connected.", "info");
+      hrForm.reset();
+    }
+    await updateQueueCount();
+  }
+
   // Audio Logic
   async function initAudioRecorder() {
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
@@ -509,6 +538,7 @@
     leaveForm.addEventListener("submit", handleLeaveSubmission);
     receiptFileInput.addEventListener("change", handleReceiptSelection);
     submitExpenseBtn.addEventListener("click", handleExpenseSubmission);
+    hrForm.addEventListener("submit", handleHRSubmission);
     
     window.addEventListener("online", () => {
       updateConnectivity();
