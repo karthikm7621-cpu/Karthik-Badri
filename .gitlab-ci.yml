@@ -1,20 +1,89 @@
-image: python:3.10-slim
+image: python:3.11-slim
+
+variables:
+  PIP_CACHE_DIR: "$CI_PROJECT_DIR/.cache/pip"
+  DOCKER_DRIVER: overlay2
+  DOCKER_TLS_CERTDIR: ""
+
+cache:
+  paths:
+    - .cache/pip
 
 stages:
   - lint
+  - type_check
+  - security
   - test
+  - build
+  - deploy
+
+workflow:
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
 
 before_script:
-  - apt-get update && apt-get install -y build-essential gcc g++ make ffmpeg
+  - python -m venv venv
+  - source venv/bin/activate
   - pip install --upgrade pip
-  - pip install -r requirements.txt
+  - pip install -r data-processor/requirements.txt
+  - pip install ruff mypy bandit pytest pytest-cov
 
-lint_code:
+lint:
   stage: lint
   script:
-    - flake8 app.py --max-line-length=88
+    - ruff check .
+    - ruff format --check .
 
-test_app:
+type_check:
+  stage: type_check
+  script:
+    - mypy . --ignore-missing-imports
+
+security_bandit:
+  stage: security
+  script:
+    - bandit -r . -ll -c pyproject.toml
+
+security_gitleaks:
+  stage: security
+  image:
+    name: zricethezav/gitleaks:latest
+    entrypoint: [""]
+  before_script: []
+  script:
+    - gitleaks detect --source . -v
+
+test:
   stage: test
   script:
-    - pytest app.py
+    - pytest --cov=. --cov-report=xml --cov-report=term --junitxml=report.xml
+  coverage: '/(?i)total.*? (100(?:\.0+)?\%|[1-9]?\d(?:\.\d+)?\%)$/'
+  artifacts:
+    reports:
+      junit: report.xml
+      coverage_report:
+        coverage_format: cobertura
+        path: coverage.xml
+
+build:
+  stage: build
+  image: docker:24.0.5
+  services:
+    - docker:24.0.5-dind
+  before_script: []
+  script:
+    - docker build -t $CI_REGISTRY_IMAGE:$CI_COMMIT_SHA .
+    - docker tag $CI_REGISTRY_IMAGE:$CI_COMMIT_SHA $CI_REGISTRY_IMAGE:latest
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+
+deploy_staging:
+  stage: deploy
+  script:
+    - echo "Deploying to staging environment via Render API..."
+    # - curl -X POST -H "Authorization: Bearer $RENDER_API_KEY" $RENDER_DEPLOY_HOOK
+  environment:
+    name: staging
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
