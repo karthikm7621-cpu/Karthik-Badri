@@ -1,0 +1,31 @@
+[project]
+name = "data-processor"
+version = "1.0.0"
+description = "A highly robust, production-grade web application built to process complex data payloads efficiently."
+authors = [
+    {name = "Team ATK", email = "team-atk@example.com"}
+]
+readme = "README.md"
+requires-python = ">=3.11"
+
+[tool.vulture]
+min_confidence = 80
+paths = ["."]
+sort_by_size = true
+
+[tool.pylint.messages_control]
+disable = [
+    "C0111", # missing-docstring
+    "W0511", # fixme
+]
+
+[tool.ruff]
+target-version = "py311"
+line-length = 100
+
+[tool.pytest.ini_options]
+minversion = "6.0"
+addopts = "-ra -q"
+testpaths = [
+    "tests",
+]

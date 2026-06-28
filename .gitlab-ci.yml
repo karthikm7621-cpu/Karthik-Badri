@@ -10,30 +10,40 @@ cache:
     - .cache/pip
 
 stages:
+  - format
   - lint
   - type_check
   - security
+  - dependency-audit
   - test
   - build
+  - changelog
   - deploy
 
 workflow:
   rules:
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
     - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+    - if: $CI_COMMIT_TAG
 
 before_script:
   - python -m venv venv
   - source venv/bin/activate
   - pip install --upgrade pip
   - pip install -r data-processor/requirements.txt
-  - pip install ruff mypy bandit pytest pytest-cov
+  - pip install ruff mypy bandit pytest pytest-cov pip-audit
+
+format:
+  stage: format
+  script:
+    - ruff format --check .
+    - ruff check .
 
 lint:
   stage: lint
   script:
+    # Ensure linters run but don't fail immediately if permissive
     - ruff check .
-    - ruff format --check .
 
 type_check:
   stage: type_check
@@ -54,6 +64,15 @@ security_gitleaks:
   script:
     - gitleaks detect --source . -v
 
+dependency_audit:
+  stage: dependency-audit
+  script:
+    - pip-audit --format json > pip-audit-report.json
+  artifacts:
+    paths:
+      - pip-audit-report.json
+    when: always
+
 test:
   stage: test
   script:
@@ -65,6 +84,13 @@ test:
       coverage_report:
         coverage_format: cobertura
         path: coverage.xml
+
+coverage_enforcement:
+  stage: test
+  needs: ["test"]
+  script:
+    - echo "Enforcing coverage threshold..."
+    - coverage report --fail-under=85
 
 build:
   stage: build
@@ -78,11 +104,22 @@ build:
   rules:
     - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
 
+changelog:
+  stage: changelog
+  image: alpine:latest
+  before_script:
+    - apk add --no-cache curl
+    - curl -L https://github.com/orhun/git-cliff/releases/latest/download/git-cliff-linux.tar.gz | tar -xz
+    - mv git-cliff-*/git-cliff /usr/local/bin/
+  script:
+    - git-cliff --unreleased --prepend CHANGELOG.md
+  rules:
+    - if: $CI_COMMIT_TAG
+
 deploy_staging:
   stage: deploy
   script:
     - echo "Deploying to staging environment via Render API..."
-    # - curl -X POST -H "Authorization: Bearer $RENDER_API_KEY" $RENDER_DEPLOY_HOOK
   environment:
     name: staging
   rules:
