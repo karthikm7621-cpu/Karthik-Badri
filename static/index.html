@@ -108,6 +108,22 @@
         </form>
         <p class="feedback" id="delegate-feedback" aria-live="polite"></p>
       </div>
+      <div id="instant-hire-container" style="margin-top: 1.5rem; padding-top: 1.5rem; border-top: 1px solid var(--border);">
+        <h3>Instant Hire: Resume Parsing</h3>
+        <p style="margin: 0.25rem 0 0; color: var(--muted);">Upload a resume (PDF/DOC/DOCX). If offline, the file will be queued securely.</p>
+        <form id="resume-form" class="form" novalidate style="margin-top: 1rem;">
+          <label class="field">
+            <span>Resume File</span>
+            <input type="file" id="resume-upload" accept=".pdf,.doc,.docx">
+          </label>
+
+          <div style="display: flex; gap: 0.6rem; align-items: center;">
+            <button type="submit">Process Resume</button>
+            <div id="resume-spinner" class="spinner hidden" aria-hidden="true" title="Processing"></div>
+          </div>
+        </form>
+        <p class="feedback" id="resume-feedback" aria-live="polite"></p>
+      </div>
     </section>
 
     <!-- Existing Dashboard Elements -->
