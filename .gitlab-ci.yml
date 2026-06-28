@@ -5,13 +5,14 @@ stages:
   - test
 
 before_script:
+  - apt-get update && apt-get install -y build-essential gcc g++ make ffmpeg
   - pip install --upgrade pip
   - pip install -r requirements.txt
 
 lint_code:
   stage: lint
   script:
-    - flake8 app.py
+    - flake8 app.py --max-line-length=88
 
 test_app:
   stage: test
