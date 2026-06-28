@@ -31,6 +31,12 @@
   const delegateUserSelect = document.getElementById("delegate-user-select");
   const delegateFeedback = document.getElementById("delegate-feedback");
 
+  // Resume Upload UI
+  const resumeForm = document.getElementById("resume-form");
+  const resumeUploadInput = document.getElementById("resume-upload");
+  const resumeSpinner = document.getElementById("resume-spinner");
+  const resumeFeedback = document.getElementById("resume-feedback");
+
   // Dashboard UI
   const connectionStatus = document.getElementById("connection-status");
   const employeeList = document.getElementById("employee-list");
@@ -403,6 +409,54 @@
     await updateQueueCount();
   }
 
+  async function handleResumeSubmission(event) {
+    event.preventDefault();
+
+    const [file] = (resumeUploadInput.files || []);
+    if (!file) {
+      setFeedback(resumeFeedback, "Please select a resume file to upload.", "info");
+      return;
+    }
+
+    // show spinner
+    resumeSpinner.classList.remove("hidden");
+    setFeedback(resumeFeedback, "Processing resume...", "info");
+
+    const formData = new FormData();
+    formData.append("resume", file, file.name);
+    // include current username if available (server may require auth)
+    const storedUser = localStorage.getItem("ems_username");
+    if (storedUser) formData.append("username", storedUser);
+
+    try {
+      if (!navigator.onLine) throw new Error("offline");
+
+      const response = await fetch("/api/upload-resume", { method: "POST", body: formData });
+      if (!response.ok) throw new Error("Request failed");
+
+      setFeedback(resumeFeedback, "Resume processed successfully.", "success");
+      resumeForm.reset();
+    } catch (err) {
+      // fallback: queue the FormData payload for later sync via IndexedDB
+      try {
+        if (queue && typeof queue.addToQueue === "function") {
+          // queue.addToQueue expects a serializable payload; pass file blob and metadata
+          await queue.addToQueue("upload-resume", { resume: file, username: localStorage.getItem("ems_username") }, true);
+          setFeedback(resumeFeedback, "Resume saved offline. Will be parsed by AI when connection is restored.", "info");
+          resumeForm.reset();
+        } else {
+          setFeedback(resumeFeedback, "Unable to queue offline — no queue available.", "info");
+        }
+      } catch (qerr) {
+        console.warn("Failed to queue resume", qerr);
+        setFeedback(resumeFeedback, "Failed to process or queue resume.", "info");
+      }
+    } finally {
+      resumeSpinner.classList.add("hidden");
+      await updateQueueCount();
+    }
+  }
+
   async function handleHRSubmission(event) {
     event.preventDefault();
     const payload = {
@@ -536,6 +590,7 @@
     delegateForm.addEventListener("submit", handleDelegation);
     attendanceForm.addEventListener("submit", handleAttendanceSubmission);
     leaveForm.addEventListener("submit", handleLeaveSubmission);
+    if (resumeForm) resumeForm.addEventListener("submit", handleResumeSubmission);
     receiptFileInput.addEventListener("change", handleReceiptSelection);
     submitExpenseBtn.addEventListener("click", handleExpenseSubmission);
     hrForm.addEventListener("submit", handleHRSubmission);
