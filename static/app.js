@@ -2,15 +2,40 @@
   "use strict";
 
   const queue = window.OfflineQueue;
-  const employees = [
+  let employees = [
     { id: "EMP-101", name: "Ari Chen" },
     { id: "EMP-102", name: "Mina Patel" },
     { id: "EMP-103", name: "Jules Ortiz" },
   ];
 
+  // Auth UI
+  const authView = document.getElementById("auth-view");
+  const dashboardView = document.getElementById("dashboard-view");
+  const loginSection = document.getElementById("login-section");
+  const registerSection = document.getElementById("register-section");
+  
+  const showRegisterLink = document.getElementById("show-register");
+  const showLoginLink = document.getElementById("show-login");
+  const loginForm = document.getElementById("login-form");
+  const registerForm = document.getElementById("register-form");
+  const logoutBtn = document.getElementById("logout-btn");
+  
+  const loginFeedback = document.getElementById("login-feedback");
+  const registerFeedback = document.getElementById("register-feedback");
+
+  // Admin UI
+  const adminPanel = document.getElementById("admin-panel");
+  const pendingUsersList = document.getElementById("pending-users-list");
+  const delegationContainer = document.getElementById("delegation-container");
+  const delegateForm = document.getElementById("delegate-form");
+  const delegateUserSelect = document.getElementById("delegate-user-select");
+  const delegateFeedback = document.getElementById("delegate-feedback");
+
+  // Dashboard UI
   const connectionStatus = document.getElementById("connection-status");
   const employeeList = document.getElementById("employee-list");
   const queueCount = document.getElementById("queue-count");
+  
   const attendanceForm = document.getElementById("attendance-form");
   const leaveForm = document.getElementById("leave-form");
   const attendanceFeedback = document.getElementById("attendance-feedback");
@@ -19,14 +44,18 @@
   const leaveEmployee = document.getElementById("leave-employee");
   const attendanceDate = document.getElementById("attendance-date");
 
+  // Audio UI
   let mediaRecorder = null;
   let audioChunks = [];
   let currentAudioBlob = null;
-
   const recordBtn = document.getElementById("record-btn");
   const recordingIndicator = document.getElementById("recording-indicator");
   const audioPlayback = document.getElementById("audio-playback");
   const submitAudioBtn = document.getElementById("submit-audio-btn");
+
+  // State
+  let currentUserRole = null;
+  let currentUsername = null;
 
   function setFeedback(element, message, type) {
     element.className = `feedback ${type}`;
@@ -50,6 +79,7 @@
     employeeList.innerHTML = employeeMarkup;
     attendanceEmployee.innerHTML = employeeOptions;
     leaveEmployee.innerHTML = employeeOptions;
+    delegateUserSelect.innerHTML = employeeOptions;
     attendanceDate.value = new Date().toISOString().slice(0, 10);
   }
 
@@ -80,9 +110,157 @@
     return response.json();
   }
 
+  // Auth Logic
+  function checkAuth() {
+    currentUsername = localStorage.getItem("ems_username");
+    currentUserRole = localStorage.getItem("ems_role");
+
+    if (currentUsername && currentUserRole) {
+      showDashboard();
+    } else {
+      showAuth();
+    }
+  }
+
+  function showAuth() {
+    authView.classList.remove("hidden");
+    dashboardView.classList.add("hidden");
+    logoutBtn.classList.add("hidden");
+  }
+
+  function showDashboard() {
+    authView.classList.add("hidden");
+    dashboardView.classList.remove("hidden");
+    logoutBtn.classList.remove("hidden");
+
+    renderEmployees();
+
+    if (currentUserRole === "Main Owner" || currentUserRole === "Delegated Owner") {
+      adminPanel.classList.remove("hidden");
+      void loadAdminData();
+      
+      if (currentUserRole === "Main Owner") {
+        delegationContainer.classList.remove("hidden");
+      } else {
+        delegationContainer.classList.add("hidden");
+      }
+    } else {
+      adminPanel.classList.add("hidden");
+    }
+  }
+
+  async function handleLogin(event) {
+    event.preventDefault();
+    if (!navigator.onLine) {
+      setFeedback(loginFeedback, "Authentication requires a network connection. Please connect to the local server.", "info");
+      return;
+    }
+
+    const username = document.getElementById("login-username").value.trim();
+    const password = document.getElementById("login-password").value.trim();
+
+    try {
+      const response = await sendPayload("login", { username, password });
+      localStorage.setItem("ems_username", response.username || username);
+      localStorage.setItem("ems_role", response.role || "Employee");
+      checkAuth();
+      loginForm.reset();
+    } catch (err) {
+      setFeedback(loginFeedback, "Login failed. Please check credentials.", "info");
+      console.warn(err);
+    }
+  }
+
+  async function handleRegister(event) {
+    event.preventDefault();
+    if (!navigator.onLine) {
+      setFeedback(registerFeedback, "Authentication requires a network connection. Please connect to the local server.", "info");
+      return;
+    }
+
+    const username = document.getElementById("register-username").value.trim();
+    const password = document.getElementById("register-password").value.trim();
+    const stream = document.getElementById("register-stream").value;
+
+    try {
+      await sendPayload("register", { username, password, stream });
+      setFeedback(registerFeedback, "Registration successful! Please wait for owner approval.", "success");
+      registerForm.reset();
+      setTimeout(() => {
+        registerSection.classList.add("hidden");
+        loginSection.classList.remove("hidden");
+      }, 2000);
+    } catch (err) {
+      setFeedback(registerFeedback, "Registration failed.", "info");
+      console.warn(err);
+    }
+  }
+
+  function handleLogout() {
+    localStorage.removeItem("ems_username");
+    localStorage.removeItem("ems_role");
+    checkAuth();
+  }
+
+  // Admin Logic
+  async function loadAdminData() {
+    if (!navigator.onLine) return;
+
+    try {
+      const res = await fetch("/api/pending-users");
+      if (!res.ok) throw new Error("Failed to fetch pending users");
+      const users = await res.json();
+      
+      if (users.length === 0) {
+        pendingUsersList.innerHTML = `<li style="justify-content: center; color: var(--muted);">No pending users</li>`;
+      } else {
+        pendingUsersList.innerHTML = users.map(u => `
+          <li>
+            <strong>${u.username}</strong>
+            <span>${u.stream}</span>
+            <button class="approve-btn secondary-btn" data-id="${u.id}" style="width: auto; padding: 0.4rem 0.8rem; border-radius: 8px;">Approve</button>
+          </li>
+        `).join("");
+
+        document.querySelectorAll(".approve-btn").forEach(btn => {
+          btn.addEventListener("click", async (e) => {
+            const userId = e.target.getAttribute("data-id");
+            try {
+              await sendPayload("approve-user", { user_id: userId });
+              e.target.textContent = "Approved";
+              e.target.disabled = true;
+            } catch (err) {
+              console.warn("Failed to approve user", err);
+            }
+          });
+        });
+      }
+    } catch (err) {
+      console.warn("Could not load pending users", err);
+    }
+  }
+
+  async function handleDelegation(event) {
+    event.preventDefault();
+    if (!navigator.onLine) {
+      setFeedback(delegateFeedback, "Requires network connection.", "info");
+      return;
+    }
+
+    const targetUserId = delegateUserSelect.value;
+    try {
+      await sendPayload("delegate-owner", { user_id: targetUserId });
+      setFeedback(delegateFeedback, "Delegation successful.", "success");
+      delegateForm.reset();
+    } catch (err) {
+      setFeedback(delegateFeedback, "Delegation failed.", "info");
+      console.warn(err);
+    }
+  }
+
+  // Dashboard logic
   async function handleAttendanceSubmission(event) {
     event.preventDefault();
-
     const payload = {
       employee: attendanceEmployee.value,
       date: attendanceDate.value,
@@ -90,61 +268,42 @@
     };
 
     try {
-      if (!navigator.onLine) {
-        throw new Error("offline");
-      }
-
-      await sendPayload("attendance", payload);
+      if (!navigator.onLine) throw new Error("offline");
+      await sendPayload("sync-attendance", payload);
       setFeedback(attendanceFeedback, "Attendance saved successfully.", "success");
       attendanceForm.reset();
       attendanceDate.value = new Date().toISOString().slice(0, 10);
     } catch (error) {
       if (queue && typeof queue.addToQueue === "function") {
-        await queue.addToQueue("attendance", payload);
+        await queue.addToQueue("sync-attendance", payload);
       }
       setFeedback(attendanceFeedback, "Saved locally and will sync when you are back online.", "info");
     }
-
     await updateQueueCount();
   }
 
   async function handleLeaveSubmission(event) {
     event.preventDefault();
-
     const payload = {
       employee: leaveEmployee.value,
-      request: document.getElementById("leave-request").value.trim(),
+      raw_text: document.getElementById("leave-request").value.trim(),
     };
 
     try {
-      if (!navigator.onLine) {
-        throw new Error("offline");
-      }
-
-      await sendPayload("leave", payload);
+      if (!navigator.onLine) throw new Error("offline");
+      await sendPayload("submit-leave", payload);
       setFeedback(leaveFeedback, "Leave request queued for review.", "success");
       leaveForm.reset();
     } catch (error) {
       if (queue && typeof queue.addToQueue === "function") {
-        await queue.addToQueue("leave", payload);
+        await queue.addToQueue("submit-leave", payload);
       }
       setFeedback(leaveFeedback, "Leave request saved for later sync.", "info");
     }
-
     await updateQueueCount();
   }
 
-  async function syncQueue() {
-    if (!navigator.onLine || !queue || typeof queue.processQueue !== "function") {
-      return;
-    }
-
-    const syncedItems = await queue.processQueue();
-    if (syncedItems > 0) {
-      await updateQueueCount();
-    }
-  }
-
+  // Audio Logic
   async function initAudioRecorder() {
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
       console.warn("Media devices API not supported.");
@@ -158,9 +317,7 @@
         audioChunks = [];
 
         mediaRecorder.addEventListener("dataavailable", (event) => {
-          if (event.data.size > 0) {
-            audioChunks.push(event.data);
-          }
+          if (event.data.size > 0) audioChunks.push(event.data);
         });
 
         mediaRecorder.addEventListener("stop", () => {
@@ -169,7 +326,6 @@
           audioPlayback.src = audioUrl;
           audioPlayback.classList.remove("hidden");
           submitAudioBtn.classList.remove("hidden");
-
           stream.getTracks().forEach((track) => track.stop());
         });
 
@@ -177,6 +333,7 @@
         recordingIndicator.classList.remove("hidden");
       } catch (err) {
         setFeedback(leaveFeedback, "Microphone access denied or error.", "info");
+        console.warn(err);
       }
     });
 
@@ -195,75 +352,85 @@
       e.preventDefault();
       recordBtn.dispatchEvent(new Event("mouseup"));
     });
+
+    submitAudioBtn.addEventListener("click", async () => {
+      if (!currentAudioBlob) return;
+      const payload = { employee_id: leaveEmployee.value, audio: currentAudioBlob };
+
+      try {
+        if (!navigator.onLine) throw new Error("offline");
+        const formData = new FormData();
+        formData.append("employee_id", payload.employee_id);
+        formData.append("audio", payload.audio, "audio.webm");
+
+        const response = await fetch("/api/submit-audio-leave", { method: "POST", body: formData });
+        if (!response.ok) throw new Error("Request failed");
+
+        setFeedback(leaveFeedback, "Voice note submitted for processing.", "success");
+        currentAudioBlob = null;
+        audioPlayback.classList.add("hidden");
+        submitAudioBtn.classList.add("hidden");
+      } catch (error) {
+        if (queue && typeof queue.addToQueue === "function") {
+          await queue.addToQueue("submit-audio-leave", payload, true);
+        }
+        setFeedback(leaveFeedback, "Voice note saved for later sync.", "info");
+        currentAudioBlob = null;
+        audioPlayback.classList.add("hidden");
+        submitAudioBtn.classList.add("hidden");
+      }
+      await updateQueueCount();
+    });
   }
 
-  submitAudioBtn.addEventListener("click", async () => {
-    if (!currentAudioBlob) return;
-
-    const payload = {
-      employee_id: leaveEmployee.value,
-      audio: currentAudioBlob,
-    };
-
-    try {
-      if (!navigator.onLine) {
-        throw new Error("offline");
-      }
-
-      const formData = new FormData();
-      formData.append("employee_id", payload.employee_id);
-      formData.append("audio", payload.audio, "audio.webm");
-
-      const response = await fetch("/api/submit-audio-leave", {
-        method: "POST",
-        body: formData,
-      });
-
-      if (!response.ok) {
-        throw new Error("Request failed");
-      }
-
-      setFeedback(leaveFeedback, "Voice note submitted for processing.", "success");
-      currentAudioBlob = null;
-      audioPlayback.classList.add("hidden");
-      submitAudioBtn.classList.add("hidden");
-    } catch (error) {
-      if (queue && typeof queue.addToQueue === "function") {
-        await queue.addToQueue("submit-audio-leave", payload, true);
-      }
-      setFeedback(leaveFeedback, "Voice note saved for later sync.", "info");
-      currentAudioBlob = null;
-      audioPlayback.classList.add("hidden");
-      submitAudioBtn.classList.add("hidden");
-    }
-
-    await updateQueueCount();
-  });
+  async function syncQueue() {
+    if (!navigator.onLine || !queue || typeof queue.processQueue !== "function") return;
+    const syncedItems = await queue.processQueue();
+    if (syncedItems > 0) await updateQueueCount();
+  }
 
   async function init() {
-    renderEmployees();
     updateConnectivity();
     await updateQueueCount();
     void initAudioRecorder();
 
+    // Event Listeners
+    showRegisterLink.addEventListener("click", (e) => {
+      e.preventDefault();
+      loginSection.classList.add("hidden");
+      registerSection.classList.remove("hidden");
+    });
+    
+    showLoginLink.addEventListener("click", (e) => {
+      e.preventDefault();
+      registerSection.classList.add("hidden");
+      loginSection.classList.remove("hidden");
+    });
+
+    loginForm.addEventListener("submit", handleLogin);
+    registerForm.addEventListener("submit", handleRegister);
+    logoutBtn.addEventListener("click", handleLogout);
+    
+    delegateForm.addEventListener("submit", handleDelegation);
     attendanceForm.addEventListener("submit", handleAttendanceSubmission);
     leaveForm.addEventListener("submit", handleLeaveSubmission);
+    
     window.addEventListener("online", () => {
       updateConnectivity();
       void syncQueue();
     });
     window.addEventListener("offline", updateConnectivity);
-    window.setInterval(() => {
-      void syncQueue();
-    }, 15000);
+    window.setInterval(() => { void syncQueue(); }, 15000);
 
     if ("serviceWorker" in navigator) {
       try {
         await navigator.serviceWorker.register("/static/service-worker.js");
       } catch (error) {
-        console.warn("Service worker registration failed", error);
+        console.warn("SW failed", error);
       }
     }
+
+    checkAuth();
   }
 
   document.addEventListener("DOMContentLoaded", () => {
