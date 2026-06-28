@@ -1,111 +1,167 @@
-const networkStatus = document.getElementById('network-status');
-const attendanceForm = document.getElementById('attendance-form');
-const attendanceStatus = document.getElementById('attendance-status');
-const leaveForm = document.getElementById('leave-form');
-const leaveStatus = document.getElementById('leave-status');
+(function () {
+  "use strict";
 
-const API_BASE = '/api';
+  const queue = window.OfflineQueue;
+  const employees = [
+    { id: "EMP-101", name: "Ari Chen" },
+    { id: "EMP-102", name: "Mina Patel" },
+    { id: "EMP-103", name: "Jules Ortiz" },
+  ];
 
-function updateNetworkStatus() {
-  const online = navigator.onLine;
-  networkStatus.textContent = online ? 'Online and ready to sync attendance data.' : 'Offline mode enabled — your UI remains available.';
-  networkStatus.className = `status ${online ? 'success' : 'offline'}`;
-}
+  const connectionStatus = document.getElementById("connection-status");
+  const employeeList = document.getElementById("employee-list");
+  const queueCount = document.getElementById("queue-count");
+  const attendanceForm = document.getElementById("attendance-form");
+  const leaveForm = document.getElementById("leave-form");
+  const attendanceFeedback = document.getElementById("attendance-feedback");
+  const leaveFeedback = document.getElementById("leave-feedback");
+  const attendanceEmployee = document.getElementById("attendance-employee");
+  const leaveEmployee = document.getElementById("leave-employee");
+  const attendanceDate = document.getElementById("attendance-date");
 
-function showStatus(element, message, type = 'success') {
-  element.hidden = false;
-  element.textContent = message;
-  element.className = `status ${type}`;
-  setTimeout(() => {
-    element.hidden = true;
-  }, 6000);
-}
+  function setFeedback(element, message, type) {
+    element.className = `feedback ${type}`;
+    element.textContent = message;
+  }
 
-async function postPayload(endpoint, payload, isFormData = false) {
-  try {
-    const response = await fetch(`${API_BASE}/${endpoint}`, {
-      method: 'POST',
-      body: isFormData ? payload : JSON.stringify(payload),
-      headers: isFormData ? undefined : { 'Content-Type': 'application/json' },
+  function updateConnectivity() {
+    const online = navigator.onLine;
+    connectionStatus.className = `hero__status ${online ? "online" : "offline"}`;
+    connectionStatus.textContent = online ? "Online and ready to sync." : "Offline mode active — changes will be queued locally.";
+  }
+
+  function renderEmployees() {
+    const employeeMarkup = employees
+      .map((employee) => `<li><strong>${employee.name}</strong><span>${employee.id}</span></li>`)
+      .join("");
+    const employeeOptions = employees
+      .map((employee) => `<option value="${employee.id}">${employee.name} (${employee.id})</option>`)
+      .join("");
+
+    employeeList.innerHTML = employeeMarkup;
+    attendanceEmployee.innerHTML = employeeOptions;
+    leaveEmployee.innerHTML = employeeOptions;
+    attendanceDate.value = new Date().toISOString().slice(0, 10);
+  }
+
+  async function updateQueueCount() {
+    if (!queue || typeof queue.getQueueCount !== "function") {
+      queueCount.textContent = "Queue: 0";
+      return;
+    }
+
+    const count = await queue.getQueueCount();
+    queueCount.textContent = `Queue: ${count}`;
+  }
+
+  async function sendPayload(endpoint, payload) {
+    const response = await fetch(`/api/${endpoint}`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(payload),
     });
 
     if (!response.ok) {
-      const error = await response.text();
-      throw new Error(error || 'Server rejected the request');
+      const text = await response.text();
+      throw new Error(text || "Request failed");
     }
 
-    return await response.json();
-  } catch (error) {
-    throw new Error(error.message || 'Network error');
-  }
-}
-
-attendanceForm.addEventListener('submit', async (event) => {
-  event.preventDefault();
-
-  const employeeId = document.getElementById('employee-id').value.trim();
-  const notes = document.getElementById('attendance-notes').value.trim();
-  const fileInput = document.getElementById('timesheet-file');
-  const file = fileInput.files[0];
-
-  if (!employeeId || !file) {
-    showStatus(attendanceStatus, 'Please provide your employee ID and timesheet image.', 'error');
-    return;
+    return response.json();
   }
 
-  const payload = new FormData();
-  payload.append('employeeId', employeeId);
-  payload.append('notes', notes);
-  payload.append('timesheet', file);
+  async function handleAttendanceSubmission(event) {
+    event.preventDefault();
 
-  attendanceStatus.textContent = 'Uploading attendance...';
-  attendanceStatus.hidden = false;
-  attendanceStatus.className = 'status';
+    const payload = {
+      employee: attendanceEmployee.value,
+      date: attendanceDate.value,
+      notes: document.getElementById("attendance-notes").value.trim(),
+    };
 
-  try {
-    const result = await postPayload('attendance', payload, true);
-    showStatus(attendanceStatus, result.message || 'Attendance uploaded successfully.');
-    attendanceForm.reset();
-  } catch (error) {
-    showStatus(attendanceStatus, `Unable to upload attendance: ${error.message}`, 'error');
-  }
-});
-
-leaveForm.addEventListener('submit', async (event) => {
-  event.preventDefault();
-
-  const employeeId = document.getElementById('leave-employee-id').value.trim();
-  const reason = document.getElementById('leave-reason').value.trim();
-
-  if (!employeeId || !reason) {
-    showStatus(leaveStatus, 'Employee ID and leave reason are required.', 'error');
-    return;
-  }
-
-  leaveStatus.textContent = 'Sending leave request...';
-  leaveStatus.hidden = false;
-  leaveStatus.className = 'status';
-
-  try {
-    const result = await postPayload('leave', { employeeId, reason });
-    showStatus(leaveStatus, result.message || 'Leave request sent successfully.');
-    leaveForm.reset();
-  } catch (error) {
-    showStatus(leaveStatus, `Unable to submit leave request: ${error.message}`, 'error');
-  }
-});
-
-window.addEventListener('online', updateNetworkStatus);
-window.addEventListener('offline', updateNetworkStatus);
-updateNetworkStatus();
-
-if ('serviceWorker' in navigator) {
-  window.addEventListener('load', async () => {
     try {
-      const registration = await navigator.serviceWorker.register('service-worker.js');
-      console.log('Service worker registered:', registration.scope);
+      if (!navigator.onLine) {
+        throw new Error("offline");
+      }
+
+      await sendPayload("attendance", payload);
+      setFeedback(attendanceFeedback, "Attendance saved successfully.", "success");
+      attendanceForm.reset();
+      attendanceDate.value = new Date().toISOString().slice(0, 10);
     } catch (error) {
-      console.warn('Service worker registration failed:', error);
+      if (queue && typeof queue.addToQueue === "function") {
+        await queue.addToQueue("attendance", payload);
+      }
+      setFeedback(attendanceFeedback, "Saved locally and will sync when you are back online.", "info");
     }
+
+    await updateQueueCount();
+  }
+
+  async function handleLeaveSubmission(event) {
+    event.preventDefault();
+
+    const payload = {
+      employee: leaveEmployee.value,
+      request: document.getElementById("leave-request").value.trim(),
+    };
+
+    try {
+      if (!navigator.onLine) {
+        throw new Error("offline");
+      }
+
+      await sendPayload("leave", payload);
+      setFeedback(leaveFeedback, "Leave request queued for review.", "success");
+      leaveForm.reset();
+    } catch (error) {
+      if (queue && typeof queue.addToQueue === "function") {
+        await queue.addToQueue("leave", payload);
+      }
+      setFeedback(leaveFeedback, "Leave request saved for later sync.", "info");
+    }
+
+    await updateQueueCount();
+  }
+
+  async function syncQueue() {
+    if (!navigator.onLine || !queue || typeof queue.processQueue !== "function") {
+      return;
+    }
+
+    const syncedItems = await queue.processQueue();
+    if (syncedItems > 0) {
+      await updateQueueCount();
+    }
+  }
+
+  async function init() {
+    renderEmployees();
+    updateConnectivity();
+    await updateQueueCount();
+
+    attendanceForm.addEventListener("submit", handleAttendanceSubmission);
+    leaveForm.addEventListener("submit", handleLeaveSubmission);
+    window.addEventListener("online", () => {
+      updateConnectivity();
+      void syncQueue();
+    });
+    window.addEventListener("offline", updateConnectivity);
+    window.setInterval(() => {
+      void syncQueue();
+    }, 15000);
+
+    if ("serviceWorker" in navigator) {
+      try {
+        await navigator.serviceWorker.register("/static/service-worker.js");
+      } catch (error) {
+        console.warn("Service worker registration failed", error);
+      }
+    }
+  }
+
+  document.addEventListener("DOMContentLoaded", () => {
+    void init();
   });
-}
+})();

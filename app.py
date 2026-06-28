@@ -2,11 +2,16 @@
 # python app.py
 # (It will automatically create the ems.db SQLite database file on first run)
 
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, send_from_directory
 from models import db, Employee, LeaveRequest, AttendanceRecord
 import os
 
 app = Flask(__name__)
+
+
+@app.route("/")
+def index():
+    return send_from_directory("static", "index.html")
 
 # Use a local SQLite database for offline-first capability
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///ems.db'
