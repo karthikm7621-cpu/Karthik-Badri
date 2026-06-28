@@ -243,6 +243,45 @@ button {
   border-top: 1px solid var(--border);
 }
 
+.policy-chat-history {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  max-height: 320px;
+  overflow-y: auto;
+  padding-right: 0.25rem;
+  margin-bottom: 1rem;
+}
+
+.policy-message {
+  display: inline-block;
+  max-width: 85%;
+  padding: 0.8rem 1rem;
+  border-radius: 16px;
+  line-height: 1.45;
+}
+
+.policy-message.user {
+  align-self: flex-end;
+  background: rgba(56, 189, 248, 0.2);
+  border: 1px solid rgba(56, 189, 248, 0.25);
+}
+
+.policy-message.bot {
+  align-self: flex-start;
+  background: rgba(15, 23, 42, 0.9);
+  border: 1px solid var(--border);
+}
+
+.policy-chat-form {
+  display: flex;
+  gap: 0.75rem;
+}
+
+.policy-chat-form input {
+  flex: 1;
+}
+
 .secondary-btn {
   background: rgba(15, 23, 42, 0.9);
   color: var(--accent);
