@@ -124,3 +124,16 @@ deploy_staging:
     name: staging
   rules:
     - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+
+frontend_coverage:
+  stage: test
+  image: node:20-alpine
+  script:
+    - npm ci
+    - npm run test
+  coverage: '/All files[^|]*\|[^|]*\s+([\d\.]+)/'
+  artifacts:
+    reports:
+      coverage_report:
+        coverage_format: cobertura
+        path: coverage/frontend/cobertura-coverage.xml
