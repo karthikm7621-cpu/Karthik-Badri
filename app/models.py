@@ -2,7 +2,7 @@ from datetime import datetime
 from typing import Any, Dict
 from app.extensions import db
 
-class Employee(db.Model):
+class Employee(db.Model):  # type: ignore
     id = db.Column(db.Integer, primary_key=True)
     employee_id_string = db.Column(db.String(50), unique=True, nullable=False)
     full_name = db.Column(db.String(150), nullable=False)
@@ -15,7 +15,7 @@ class Employee(db.Model):
     stream = db.Column(db.String(80), nullable=True)
 
 
-class Candidate(db.Model):
+class Candidate(db.Model):  # type: ignore
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(200), nullable=True)
     email = db.Column(db.String(200), nullable=True)
@@ -24,7 +24,7 @@ class Candidate(db.Model):
     status = db.Column(db.String(40), nullable=False, default="New")
 
 
-class User(db.Model):
+class User(db.Model):  # type: ignore
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(80), unique=True, nullable=False)
     password_hash = db.Column(db.String(255), nullable=False)
@@ -44,13 +44,13 @@ class User(db.Model):
         }
 
 
-class Stream(db.Model):
+class Stream(db.Model):  # type: ignore
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(80), unique=True, nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
 
-class LeaveRequest(db.Model):
+class LeaveRequest(db.Model):  # type: ignore
     id = db.Column(db.Integer, primary_key=True)
     employee_id = db.Column(db.Integer, db.ForeignKey("employee.id"), nullable=False)
     start_date = db.Column(db.Date, nullable=False)
@@ -60,7 +60,7 @@ class LeaveRequest(db.Model):
     status = db.Column(db.String(50), default="Pending")
 
 
-class AttendanceRecord(db.Model):
+class AttendanceRecord(db.Model):  # type: ignore
     id = db.Column(db.Integer, primary_key=True)
     employee_id = db.Column(db.Integer, db.ForeignKey("employee.id"), nullable=False)
     date = db.Column(db.Date, nullable=False)
@@ -70,7 +70,7 @@ class AttendanceRecord(db.Model):
     verified_by = db.Column(db.String(50), nullable=True)
 
 
-class ExpenseReimbursement(db.Model):
+class ExpenseReimbursement(db.Model):  # type: ignore
     id = db.Column(db.Integer, primary_key=True)
     employee_id = db.Column(db.Integer, db.ForeignKey("employee.id"), nullable=True)
     vendor = db.Column(db.String(150), nullable=True)
@@ -81,7 +81,7 @@ class ExpenseReimbursement(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
 
-class HRTicket(db.Model):
+class HRTicket(db.Model):  # type: ignore
     id = db.Column(db.Integer, primary_key=True)
     employee_id = db.Column(db.Integer, db.ForeignKey("employee.id"), nullable=False)
     original_language = db.Column(db.String(10), nullable=True)
