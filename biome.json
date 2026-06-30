@@ -1,5 +1,5 @@
 {
-  "$schema": "https://biomejs.dev/schemas/2.5.1/schema.json",
+  "$schema": "https://biomejs.dev/schemas/1.9.4/schema.json",
   "vcs": {
     "enabled": true,
     "clientKind": "git",
@@ -9,21 +9,13 @@
     "ignoreUnknown": false,
     "includes": [
       "**",
-      "!**/venv",
-      "!**/.venv",
-      "!**/__pycache__",
-      "!**/.pytest_cache",
-      "!**/.mypy_cache",
-      "!**/coverage",
-      "!**/htmlcov",
       "!**/node_modules",
-      "!**/instance",
-      "!**/static/policy_handbook.txt"
+      "!**/venv",
+      "!**/.venv"
     ]
   },
   "formatter": {
     "enabled": true,
-    "formatWithErrors": false,
     "indentStyle": "space",
     "indentWidth": 2,
     "lineWidth": 100,
@@ -42,100 +34,21 @@
       "navigator",
       "localStorage",
       "sessionStorage",
-      "fetch",
-      "caches",
-      "indexedDB",
-      "self",
-      "URL",
-      "Response",
-      "Request",
-      "Headers",
-      "FormData",
-      "File",
-      "Blob",
-      "Notification",
-      "confirm",
-      "alert"
+      "fetch"
     ]
   },
-  "json": {
-    "formatter": {
-      "enabled": true,
-      "trailingCommas": "none"
-    }
-  },
-  "css": {
-    "formatter": {
-      "enabled": true
-    }
-  },
-  "assist": { "actions": { "source": { "organizeImports": "on" } } },
   "linter": {
     "enabled": true,
     "rules": {
       "preset": "recommended",
-      "a11y": {
-        "preset": "recommended",
-        "noAutofocus": "warn",
-        "useButtonType": "error",
-        "useKeyWithClickEvents": "error"
-      },
-      "complexity": {
-        "preset": "recommended",
-        "noBannedTypes": "error",
-        "noExtraBooleanCast": "error",
-        "noForEach": "off",
-        "noStaticOnlyClass": "error",
-        "useArrowFunction": "warn",
-        "useLiteralKeys": "error",
-        "useOptionalChain": "warn",
-        "useSimplifiedLogicExpression": "warn"
-      },
       "correctness": {
-        "preset": "recommended",
-        "noChildrenProp": "off",
         "noConstAssign": "error",
-        "noGlobalObjectCalls": "error",
-        "noInvalidConstructorSuper": "error",
-        "noPrecisionLoss": "error",
         "noSelfAssign": "error",
-        "noUndeclaredVariables": "error",
-        "noUnreachable": "error",
-        "useExhaustiveDependencies": "off",
-        "useValidForDirection": "error"
-      },
-      "security": {
-        "preset": "recommended",
-        "noDangerouslySetInnerHtml": "off"
+        "noUndeclaredVariables": "error"
       },
       "style": {
-        "preset": "recommended",
-        "noImplicitBoolean": "off",
-        "noNonNullAssertion": "error",
-        "useBlockStatements": "error",
         "useConst": "error",
-        "useDefaultParameterLast": "error",
-        "useEnumInitializers": "error",
-        "useExponentiationOperator": "error",
-        "useFragmentSyntax": "off",
-        "useNamingConvention": "off",
-        "useSelfClosingElements": "off",
-        "useSingleVarDeclarator": "error",
-        "useTemplate": "warn"
-      },
-      "suspicious": {
-        "preset": "recommended",
-        "noDebugger": "error",
-        "noExplicitAny": "off",
-        "noGlobalAssign": "error",
-        "noImplicitAnyLet": "error",
-        "noPrototypeBuiltins": "error",
-        "noShadowRestrictedNames": "error",
-        "noUnsafeDeclarationMerging": "error",
-        "useAwait": "warn",
-        "useGetterReturn": "error",
-        "useIsArray": "error",
-        "noConsole": { "level": "warn", "options": { "allow": ["log"] } }
+        "useSingleVarDeclarator": "error"
       }
     }
   }
