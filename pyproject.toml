@@ -1,12 +1,13 @@
 [project]
 name = "data-processor"
 version = "1.0.0"
-description = "A highly robust, production-grade web application built to process complex data payloads efficiently."
+description = "[One-line summary, e.g., An offline-first, production-grade Employee Management System powered by Flask.]"
 authors = [
     {name = "Team ATK", email = "team-atk@example.com"}
 ]
 readme = "README.md"
 requires-python = ">=3.11"
+keywords = ["ems", "flask", "offline-first", "employee-management", "service-worker"]
 
 [tool.vulture]
 min_confidence = 80

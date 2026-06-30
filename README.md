@@ -4,7 +4,13 @@
 [![Contributor Covenant](https://img.shields.io/badge/Contributor%20Covenant-2.1-4baaaa.svg)](CODE_OF_CONDUCT.md)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](CONTRIBUTING.md)
 
-A highly robust, production-grade web application built to process complex data payloads efficiently. Originally a local Streamlit application, it has been completely re-architected into a scalable Flask API with a stunning frontend interface.
+> **[Project Purpose - e.g., Revolutionizing remote workforce management through resilient offline-first architecture.]**
+
+The **CPU-First Employee Management System (EMS)** is a highly robust, production-grade web application built to process complex data payloads efficiently. Designed with a local-first philosophy, it allows teams to track attendance, queue submissions, and manage leave requests seamlessly—even in completely disconnected environments. 
+
+Originally a local Streamlit application, the platform has been completely re-architected into a scalable Flask API with a stunning, glassmorphism-styled frontend. It leverages robust client-side storage to ensure zero data loss during network outages, synchronizing effortlessly with the backend once connectivity is restored.
+
+**Target Audience:** [Who is this for? e.g., Distributed teams, field workers, or organizations operating in low-bandwidth environments.]
 
 ## 🌟 Core Features
 - **Secure REST API:** Built with Flask, featuring comprehensive logging and error handling.
