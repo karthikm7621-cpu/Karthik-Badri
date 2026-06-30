@@ -128,7 +128,6 @@
         "recommended": true,
         "noConsoleLog": "warn",
         "noDebugger": "error",
-        "noDocumentCookie": "error",
         "noExplicitAny": "off",
         "noGlobalAssign": "error",
         "noImplicitAnyLet": "error",
