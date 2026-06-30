@@ -1,41 +1,75 @@
-# Team ATK Engineering & Automation Constitution 🛡️
+# Team ATK Engineering Constitution
 
-**Authored by:** Core Architecture, AI Automation, and DevOps Guilds
+**Version:** 1.0.0  
+**Scope:** Flask backend, vanilla JavaScript frontend, GitLab CI/CD, AI-assisted contributions  
+**Status:** Mandatory for all human and autonomous contributors
 
-This constitution enforces non-negotiable standards across our AI-assisted development, core software engineering, and continuous delivery pipelines. All human and autonomous agent contributors MUST adhere to this document.
+## 1. Operating Principles
 
----
+- Every feature must start from a written specification in `.specify/Templates/feature_spec.md` or a derivative in `specs/`.
+- Production code must be small, testable, observable, and secure by default.
+- CI is the source of truth for merge readiness.
+- Agents must not commit directly to `main`.
+- Security scanning, type checking, coverage, and dependency audits must not be disabled to force a merge.
 
-## 1. 🧠 AI Prompt Engineering & Automation Standards
-*As mandated by the Principal Prompt Engineer*
+## 2. Backend Architecture: Flask
 
-- **System Prompt Integrity:** All AI agents contributing to this repository must operate strictly under the context of this constitution.
-- **Spec-to-Code Traceability:** Agents must generate code that explicitly references the corresponding `feature_spec.md` or `technical_spec.md` in commit messages and PR descriptions.
-- **Zero-Hallucination Policy:** AI-generated code must exclusively use the approved tech stack (Vanilla JS, Flask, HTML/CSS). No unauthorized third-party libraries may be imported without explicit architectural approval.
-- **Self-Correction Loop:** Agents must run local linters and unit tests (where configured) before proposing a commit.
+- Flask applications must be created through an application factory when new backend modules are introduced.
+- New route groups must be implemented as Flask Blueprints and registered from the application assembly layer.
+- Route handlers must stay thin: parse input, call service/domain code, and return serialized responses.
+- Business logic must live outside route handlers.
+- Database access must be isolated behind repository or service functions rather than mixed into request parsing.
+- Request input must be validated before use.
+- File uploads must validate size, extension, content type, and storage path.
+- API responses must avoid leaking stack traces, local paths, secrets, tokens, or raw exception messages.
+- Error handling must return stable JSON responses for API endpoints.
+- Python code must pass Ruff, MyPy where practical, Bandit, dependency audit, and pytest coverage checks.
 
-## 2. 💻 Software Engineering Standards
-*As mandated by the Principal Software Developer*
+## 3. Frontend Architecture: Vanilla JavaScript
 
-### Backend (Python/Flask)
-- **Hexagonal Architecture (Ports and Adapters):** Business logic must be decoupled from Flask routing. Flask routes (Adapters) must only parse requests, pass them to Service layers (Core), and format responses.
-- **Strict Typing:** All Python code must use `typing` and pass static analysis tools (e.g., `mypy --strict`).
-- **Stateless APIs:** All Flask endpoints must be perfectly stateless. Session data belongs in Redis or client-side tokens (JWT), never in local memory.
-- **Error Boundaries:** Use global exception handlers to capture, log (with correlation IDs), and sanitize errors before returning a standardized `{"status": "error", "error_code": "..."}` JSON payload to the client.
+- JavaScript must be organized into modules with explicit imports and exports when the browser target allows it.
+- New code must avoid global namespace pollution. Globals are allowed only for browser platform APIs or clearly documented compatibility shims.
+- DOM writes must prefer `textContent`, safe attribute setters, or controlled template construction.
+- `innerHTML` is prohibited for user-controlled content.
+- Event listeners created by a module must have a clear cleanup path when the module can be unmounted.
+- Network access must go through shared request helpers when present.
+- IndexedDB and service-worker behavior must be treated as application infrastructure and covered by regression tests when modified.
+- Frontend code must pass Biome formatting, Biome linting, Knip dead-code checks, and Jest coverage checks.
 
-### Frontend (Vanilla JS & UI)
-- **Component Lifecycle Management:** Vanilla JS modules must expose `mount(element)` and `unmount()` methods to prevent memory leaks and dangling event listeners.
-- **Offline-First State Machine:** Client-side state must be managed via a centralized store that syncs with IndexedDB. Network calls must be queued during offline states and automatically retried via Service Workers.
-- **Security Primitives:** DOM updates must use `textContent` or `DOMPurify` to mitigate XSS. Never use raw `innerHTML`.
+## 4. Security Requirements
 
-## 3. 🚀 CI/CD & Pipeline Standards
-*As mandated by the Principal Pipeline Specialist*
+- Secrets, credentials, private keys, tokens, and local `.env` files must never be committed.
+- Authentication and authorization changes require explicit maintainer review.
+- Dependency additions require a clear reason, a license-compatible package, and a passing dependency audit.
+- Public issue reports must not contain vulnerability details. Use `SECURITY.md` for private disclosure.
+- Generated files, model files, local databases, virtual environments, and caches must remain ignored unless explicitly approved.
 
-- **Immutable Build Artifacts:** Docker images must be built once, tagged with the Git SHA, and promoted across environments (Staging -> Prod) without rebuilding.
-- **Shift-Left Security:** All PRs must pass automated SAST (Static Application Security Testing) and dependency vulnerability scans before the merge button is unlocked.
-- **Zero-Downtime Deployments:** The pipeline mandates Blue/Green or Canary deployment strategies. Health-check endpoints (`/api/health`) are strictly required.
-- **Merge Criteria:** 
-  1. 100% pass rate on unit/integration tests.
-  2. Test coverage must not decrease (enforced by SonarQube/Codecov).
-  3. Minimum one human approval.
-  4. Squashed commits following Conventional Commits (`type(scope): subject`).
+## 5. Testing and Coverage
+
+- Backend changes must include pytest coverage for service logic, request validation, and security-sensitive branches.
+- Frontend changes must include Jest tests for state changes, DOM behavior, and browser-storage behavior where applicable.
+- GitLab CI must publish backend and frontend coverage artifacts.
+- Coverage should not decrease. The default backend minimum is 85% unless maintainers approve a staged exception.
+- Bug fixes must include a regression test that fails before the fix.
+
+## 6. GitLab Merge Rules
+
+- Merge requests must use the GitLab merge request template.
+- Merge requests must disclose AI-assisted or AI-authored work when substantial logic, architecture, or documentation was generated.
+- Required checks include formatting, linting, type checking, security scanning, dependency audit, backend coverage, and frontend coverage.
+- `.gitlab-ci.yml` changes require human maintainer intent and review.
+- Squashed commits should follow Conventional Commits.
+
+## 7. Specification Compliance
+
+Every feature specification must define:
+
+- User problem and acceptance criteria
+- Backend endpoints or explicit statement that none are needed
+- Frontend state, DOM, and accessibility behavior
+- Data model or storage changes
+- Security and privacy considerations
+- Test plan and coverage expectations
+- Rollout and rollback notes
+
+Work that does not satisfy the relevant specification must not be merged.

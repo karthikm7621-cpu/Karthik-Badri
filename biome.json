@@ -1,0 +1,144 @@
+{
+  "$schema": "https://biomejs.dev/schemas/1.9.4/schema.json",
+  "vcs": {
+    "enabled": true,
+    "clientKind": "git",
+    "useIgnoreFile": true
+  },
+  "files": {
+    "ignoreUnknown": false,
+    "ignore": [
+      "venv/**",
+      ".venv/**",
+      "__pycache__/**",
+      ".pytest_cache/**",
+      ".mypy_cache/**",
+      "coverage/**",
+      "htmlcov/**",
+      "node_modules/**",
+      "instance/**",
+      "static/policy_handbook.txt"
+    ]
+  },
+  "formatter": {
+    "enabled": true,
+    "formatWithErrors": false,
+    "indentStyle": "space",
+    "indentWidth": 2,
+    "lineWidth": 100,
+    "lineEnding": "lf"
+  },
+  "javascript": {
+    "formatter": {
+      "quoteStyle": "single",
+      "semicolons": "always",
+      "trailingCommas": "es5",
+      "arrowParentheses": "always"
+    },
+    "globals": [
+      "window",
+      "document",
+      "navigator",
+      "localStorage",
+      "sessionStorage",
+      "fetch",
+      "caches",
+      "indexedDB",
+      "self",
+      "URL",
+      "Response",
+      "Request",
+      "Headers",
+      "FormData",
+      "File",
+      "Blob",
+      "Notification",
+      "confirm",
+      "alert"
+    ]
+  },
+  "json": {
+    "formatter": {
+      "enabled": true,
+      "trailingCommas": "none"
+    }
+  },
+  "css": {
+    "formatter": {
+      "enabled": true
+    }
+  },
+  "organizeImports": {
+    "enabled": true
+  },
+  "linter": {
+    "enabled": true,
+    "rules": {
+      "recommended": true,
+      "a11y": {
+        "recommended": true,
+        "noAutofocus": "warn",
+        "useButtonType": "error",
+        "useKeyWithClickEvents": "error"
+      },
+      "complexity": {
+        "recommended": true,
+        "noBannedTypes": "error",
+        "noExtraBooleanCast": "error",
+        "noForEach": "off",
+        "noStaticOnlyClass": "error",
+        "useArrowFunction": "warn",
+        "useLiteralKeys": "error",
+        "useOptionalChain": "warn",
+        "useSimplifiedLogicExpression": "warn"
+      },
+      "correctness": {
+        "recommended": true,
+        "noChildrenProp": "off",
+        "noConstAssign": "error",
+        "noGlobalObjectCalls": "error",
+        "noInvalidConstructorSuper": "error",
+        "noPrecisionLoss": "error",
+        "noSelfAssign": "error",
+        "noUndeclaredVariables": "error",
+        "noUnreachable": "error",
+        "useExhaustiveDependencies": "off",
+        "useValidForDirection": "error"
+      },
+      "security": {
+        "recommended": true,
+        "noDangerouslySetInnerHtml": "off"
+      },
+      "style": {
+        "recommended": true,
+        "noImplicitBoolean": "off",
+        "noNonNullAssertion": "error",
+        "useBlockStatements": "error",
+        "useConst": "error",
+        "useDefaultParameterLast": "error",
+        "useEnumInitializers": "error",
+        "useExponentiationOperator": "error",
+        "useFragmentSyntax": "off",
+        "useNamingConvention": "off",
+        "useSelfClosingElements": "off",
+        "useSingleVarDeclarator": "error",
+        "useTemplate": "warn"
+      },
+      "suspicious": {
+        "recommended": true,
+        "noConsoleLog": "warn",
+        "noDebugger": "error",
+        "noDocumentCookie": "error",
+        "noExplicitAny": "off",
+        "noGlobalAssign": "error",
+        "noImplicitAnyLet": "error",
+        "noPrototypeBuiltins": "error",
+        "noShadowRestrictedNames": "error",
+        "noUnsafeDeclarationMerging": "error",
+        "useAwait": "warn",
+        "useGetterReturn": "error",
+        "useIsArray": "error"
+      }
+    }
+  }
+}

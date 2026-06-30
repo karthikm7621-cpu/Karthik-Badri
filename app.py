@@ -543,7 +543,6 @@ def sync_attendance() -> Any:
     return jsonify({"message": "Attendance synced successfully"})
 
 
-<<<<<<< HEAD
 @app.route("/api/ask-policy", methods=["POST"])
 def ask_policy() -> Any:
     payload = request.get_json(silent=True) or {}
@@ -609,7 +608,8 @@ def ask_policy() -> Any:
                 "error": str(exc),
             }
         )
-=======
+
+
 @app.route("/api/verify-attendance", methods=["POST"])
 def verify_attendance() -> Any:
     if "image" not in request.files:
@@ -640,7 +640,6 @@ def verify_attendance() -> Any:
     db.session.commit()
 
     return jsonify({"status": "success", "message": "Attendance verified"})
->>>>>>> d5d649b7b3d67c73b1ddd491104b25a06972b399
 
 
 @app.route("/api/submit-leave", methods=["POST"])
@@ -813,15 +812,10 @@ def upload_resume() -> Any:
         system_prompt = (
             "You are an HR data extractor. Read the following resume text. "
             "Extract the candidate's name, email, a list of core technical skills, "
-<<<<<<< HEAD
-            "and total years of experience as an integer. Output ONLY valid JSON in this exact format: "
-            '{"candidate_name": "...", "email": "...", "skills": ["..."], "years_of_experience": X}. '
-=======
             "and total years of experience as an integer. "
             "Output ONLY valid JSON in this exact format: "
             '{"candidate_name": "...", "email": "...", '
             '"skills": ["..."], "years_of_experience": X}. '
->>>>>>> d5d649b7b3d67c73b1ddd491104b25a06972b399
             "No markdown, no conversational text."
         )
         prompt = f"{system_prompt}\n\nResume Text:\n{raw_text}\n\nJSON:"
