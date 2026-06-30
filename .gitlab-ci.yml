@@ -53,7 +53,7 @@ backend_format:
 frontend_lint:
   stage: lint
   script:
-    - docker run --rm -v "${PWD}:/app" -w /app node:20-alpine sh -c "npm install && npm run lint && npm run deadcode"
+    - docker run --rm -v "${PWD}:/app" -w /app node:20-alpine sh -c "npm install && npm run check && npm run deadcode"
   rules:
     - changes:
       - "**/*.js"
@@ -110,7 +110,7 @@ dependency_audit:
 backend_coverage:
   stage: test
   script:
-    - docker run --rm -v "${PWD}:/app" -v "${PWD}/.cache/pip:/root/.cache/pip" -w /app python:3.11-slim bash -c "pip install pytest pytest-cov coverage -r requirements.txt && pytest --cov=. --cov-report=term-missing --cov-report=xml:coverage/backend/coverage.xml --cov-report=html:coverage/backend/html --junitxml=coverage/backend/junit.xml && coverage report --precision=2"
+    - docker run --rm -v "${PWD}:/app" -v "${PWD}/.cache/pip:/root/.cache/pip" -w /app python:3.11-slim bash -c "pip install pytest pytest-cov coverage -r requirements.txt -r ml-requirements.txt && pytest --cov=. --cov-report=term-missing --cov-report=xml:coverage/backend/coverage.xml --cov-report=html:coverage/backend/html --junitxml=coverage/backend/junit.xml && coverage report --precision=2"
   coverage: '/TOTAL\s+\d+\s+\d+\s+(\d+(?:\.\d+)?)%/'
   rules:
     - changes:
