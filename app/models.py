@@ -2,6 +2,7 @@ from datetime import datetime
 from typing import Any, Dict
 from app.extensions import db
 
+
 class Employee(db.Model):  # type: ignore
     id = db.Column(db.Integer, primary_key=True)
     employee_id_string = db.Column(db.String(50), unique=True, nullable=False)

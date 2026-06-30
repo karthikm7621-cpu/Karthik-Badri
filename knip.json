@@ -1,26 +1,9 @@
 {
   "$schema": "https://unpkg.com/knip@5/schema.json",
-  "entry": [
-    "static/app.js",
-    "static/db.js",
-    "static/service-worker.js",
-    "jest.config.js"
-  ],
-  "project": [
-    "static/**/*.js",
-    "static/**/*.html",
-    "*.js"
-  ],
-  "ignore": [
-    "coverage/**",
-    "node_modules/**",
-    "venv/**",
-    ".venv/**",
-    "instance/**"
-  ],
-  "ignoreDependencies": [
-    "jest-environment-jsdom"
-  ],
+  "entry": ["static/app.js", "static/db.js", "static/service-worker.js", "jest.config.js"],
+  "project": ["static/**/*.js", "static/**/*.html", "*.js"],
+  "ignore": ["coverage/**", "node_modules/**", "venv/**", ".venv/**", "instance/**"],
+  "ignoreDependencies": ["jest-environment-jsdom"],
   "jest": {
     "config": "jest.config.js"
   }

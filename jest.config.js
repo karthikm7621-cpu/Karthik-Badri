@@ -5,8 +5,8 @@ module.exports = {
     'static/**/*.js',
     '!static/**/*.min.js',
     '!static/vendor/**/*.js',
-    '!**/node_modules/**'
+    '!**/node_modules/**',
   ],
   coverageDirectory: 'coverage/frontend',
-  coverageReporters: ['text', 'cobertura', 'html']
+  coverageReporters: ['text', 'cobertura', 'html'],
 };

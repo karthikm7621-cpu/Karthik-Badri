@@ -1,8 +1,6 @@
-(function () {
-  "use strict";
-
-  const DB_NAME = "cpu-first-ems";
-  const STORE_NAME = "sync_queue";
+(() => {
+  const DB_NAME = 'cpu-first-ems';
+  const STORE_NAME = 'sync_queue';
   const DB_VERSION = 1;
 
   function openDatabase() {
@@ -12,7 +10,7 @@
       request.onupgradeneeded = (event) => {
         const database = event.target.result;
         if (!database.objectStoreNames.contains(STORE_NAME)) {
-          database.createObjectStore(STORE_NAME, { keyPath: "id", autoIncrement: true });
+          database.createObjectStore(STORE_NAME, { keyPath: 'id', autoIncrement: true });
         }
       };
 
@@ -23,10 +21,15 @@
 
   async function addToQueue(endpoint, payload, isFormData = false) {
     const database = await openDatabase();
-    const transaction = database.transaction(STORE_NAME, "readwrite");
+    const transaction = database.transaction(STORE_NAME, 'readwrite');
     const store = transaction.objectStore(STORE_NAME);
     await new Promise((resolve, reject) => {
-      const request = store.add({ endpoint, payload, isFormData, createdAt: new Date().toISOString() });
+      const request = store.add({
+        endpoint,
+        payload,
+        isFormData,
+        createdAt: new Date().toISOString(),
+      });
       request.onsuccess = () => resolve(request.result);
       request.onerror = () => reject(request.error);
     });
@@ -35,7 +38,7 @@
 
   async function getQueueCount() {
     const database = await openDatabase();
-    const transaction = database.transaction(STORE_NAME, "readonly");
+    const transaction = database.transaction(STORE_NAME, 'readonly');
     const store = transaction.objectStore(STORE_NAME);
     const count = await new Promise((resolve, reject) => {
       const request = store.count();
@@ -52,7 +55,7 @@
     }
 
     const database = await openDatabase();
-    const transaction = database.transaction(STORE_NAME, "readwrite");
+    const transaction = database.transaction(STORE_NAME, 'readwrite');
     const store = transaction.objectStore(STORE_NAME);
     const entries = await new Promise((resolve, reject) => {
       const request = store.getAll();
@@ -63,18 +66,18 @@
     let syncedCount = 0;
     for (const entry of entries) {
       try {
-        let fetchOptions = {
-          method: "POST"
+        const fetchOptions = {
+          method: 'POST',
         };
-        
+
         if (entry.isFormData) {
           const formData = new FormData();
           if (entry.payload instanceof FormData) {
             fetchOptions.body = entry.payload;
           } else if (entry.payload instanceof Blob || entry.payload instanceof File) {
-            formData.append("receipt", entry.payload, entry.payload.name || "receipt.jpg");
+            formData.append('receipt', entry.payload, entry.payload.name || 'receipt.jpg');
             fetchOptions.body = formData;
-          } else if (entry.payload && typeof entry.payload === "object") {
+          } else if (entry.payload && typeof entry.payload === 'object') {
             for (const [key, value] of Object.entries(entry.payload)) {
               if (value instanceof Blob || value instanceof File) {
                 formData.append(key, value, value.name || `${key}.bin`);
@@ -85,14 +88,14 @@
             fetchOptions.body = formData;
           }
         } else {
-          fetchOptions.headers = { "Content-Type": "application/json" };
+          fetchOptions.headers = { 'Content-Type': 'application/json' };
           fetchOptions.body = JSON.stringify(entry.payload);
         }
 
         const response = await fetch(`/api/${entry.endpoint}`, fetchOptions);
 
         if (!response.ok) {
-          throw new Error("Request failed");
+          throw new Error('Request failed');
         }
 
         await new Promise((resolve, reject) => {
@@ -102,7 +105,7 @@
         });
         syncedCount += 1;
       } catch (error) {
-        console.warn("Queue sync failed", error);
+        console.warn('Queue sync failed', error);
       }
     }
 

@@ -11,16 +11,19 @@ RAG_INDEX: Optional[Any] = None
 RAG_CHUNKS: List[str] = []
 RAG_ERROR: Optional[str] = None
 
+
 def get_llm() -> Any:
     """Loads a lightweight local LLM via llama-cpp-python."""
     model_path = os.environ.get("LLM_MODEL_PATH", "./models/model.gguf")
     try:
         from llama_cpp import Llama
+
         if os.path.exists(model_path):
             return Llama(model_path=model_path, verbose=False)
     except ImportError:
         pass
     return None
+
 
 def chunk_text(text: str, chunk_size: int = 500, overlap: int = 80) -> List[str]:
     if not text:
@@ -40,6 +43,7 @@ def chunk_text(text: str, chunk_size: int = 500, overlap: int = 80) -> List[str]
         start = max(0, end - overlap)
     return chunks
 
+
 def initialize_rag_index(file_path: Optional[str] = None) -> Tuple[Optional[Any], List[str]]:
     global RAG_EMBEDDING_MODEL, RAG_INDEX, RAG_CHUNKS, RAG_ERROR
 
@@ -51,11 +55,13 @@ def initialize_rag_index(file_path: Optional[str] = None) -> Tuple[Optional[Any]
         candidates.append(file_path)
 
     base_dir = os.path.dirname(os.path.dirname(__file__))
-    candidates.extend([
-        os.path.join(base_dir, "static", "policy_handbook.txt"),
-        os.path.join(base_dir, "README.md"),
-        os.path.join(base_dir, "SPEC_KIT.md"),
-    ])
+    candidates.extend(
+        [
+            os.path.join(base_dir, "static", "policy_handbook.txt"),
+            os.path.join(base_dir, "README.md"),
+            os.path.join(base_dir, "SPEC_KIT.md"),
+        ]
+    )
 
     raw_text = ""
     for candidate in candidates:
@@ -113,9 +119,11 @@ def initialize_rag_index(file_path: Optional[str] = None) -> Tuple[Optional[Any]
         RAG_CHUNKS = chunks
         return None, chunks
 
+
 def transcribe_audio(file_path: str) -> str:
     try:
         import whisper
+
         model = whisper.load_model("tiny.en", device="cpu")
         result = model.transcribe(file_path)
         return result["text"]
@@ -123,6 +131,7 @@ def transcribe_audio(file_path: str) -> str:
         return "Mocked transcription: User needs tomorrow off due to sickness."
     except Exception as e:
         return f"Transcription failed: {str(e)}"
+
 
 def process_leave_with_llm(raw_text: str) -> Dict[str, Any]:
     llm = get_llm()
@@ -152,18 +161,22 @@ def process_leave_with_llm(raw_text: str) -> Dict[str, Any]:
             "reason": "Failed to parse",
         }
 
+
 def get_ocr_reader() -> Any:
     try:
         from easyocr import Reader
+
         return Reader(["en"], gpu=False)
     except Exception:
         return None
+
 
 def extract_text_from_image(image_path: str) -> str:
     if not image_path or not os.path.exists(image_path):
         return ""
     try:
         import onnxruntime as ort
+
         providers = ort.get_available_providers()
         if "CPUExecutionProvider" not in providers:
             return ""
@@ -171,6 +184,7 @@ def extract_text_from_image(image_path: str) -> str:
         return ""
     try:
         from PIL import Image
+
         with Image.open(image_path) as image:
             image.convert("RGB").save(image_path)
     except Exception:
@@ -183,6 +197,7 @@ def extract_text_from_image(image_path: str) -> str:
         return " ".join(part for part in results if part).strip()
     except Exception:
         return ""
+
 
 def extract_text_from_pdf(file_path: str) -> str:
     if not file_path or not os.path.exists(file_path):
@@ -205,6 +220,7 @@ def extract_text_from_pdf(file_path: str) -> str:
     except Exception:
         return ""
     return "\n".join(part for part in text_parts if part).strip()
+
 
 def process_expense_with_llm(raw_text: str) -> Dict[str, Any]:
     llm = get_llm()
@@ -233,6 +249,7 @@ def process_expense_with_llm(raw_text: str) -> Dict[str, Any]:
             "amount": "0.00",
             "currency": "USD",
         }
+
 
 def parse_hr_ticket(raw_text: str) -> Dict[str, Any]:
     llm = get_llm()
@@ -264,6 +281,7 @@ def parse_hr_ticket(raw_text: str) -> Dict[str, Any]:
             "english_summary": "Failed to parse AI output",
         }
 
+
 def verify_face(image_file: Any, employee_id: str) -> bool:
     try:
         import cv2
@@ -271,7 +289,9 @@ def verify_face(image_file: Any, employee_id: str) -> bool:
         import numpy as np
     except ImportError:
         return False
-    reference_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "static", "profiles", f"{employee_id}.jpg")
+    reference_path = os.path.join(
+        os.path.dirname(os.path.dirname(__file__)), "static", "profiles", f"{employee_id}.jpg"
+    )
     if not os.path.exists(reference_path):
         return False
     try:
@@ -292,14 +312,17 @@ def verify_face(image_file: Any, employee_id: str) -> bool:
     except Exception:
         return False
 
+
 def get_request_data() -> Dict[str, Any]:
     data = request.get_json(silent=True)
     if isinstance(data, dict):
         return data
     return request.form.to_dict()
 
+
 def resolve_authenticated_user() -> Any:
     return User.query.filter_by(username="Owner1").first()
+
 
 def is_owner(user: Any) -> bool:
     return user is not None and user.role in {"Main Owner", "Delegated Owner"}

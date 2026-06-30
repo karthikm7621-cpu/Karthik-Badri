@@ -3,19 +3,21 @@ from werkzeug.security import generate_password_hash
 
 from app.extensions import db
 
+
 def create_app(config_object=None):
     app = Flask(__name__, static_folder="../static")
-    
+
     # Configuration
     app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///ems.db"
     app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
     app.config["JSON_SORT_KEYS"] = False
-    
+
     if config_object:
         app.config.update(config_object)
-        
+
     try:
         from flask_cors import CORS
+
         CORS(app)
     except ImportError:
         pass
@@ -26,12 +28,14 @@ def create_app(config_object=None):
     # Register blueprints
     from app.routes.main import main_bp
     from app.routes.api import api_bp
+
     app.register_blueprint(main_bp)
     app.register_blueprint(api_bp)
 
     @app.before_request
     def seed_default_users_if_needed():
         from app.models import User
+
         if not app.config.get("_seeded", False):
             # Workaround for setting config before request in multi-threaded environment
             app.config["_seeded"] = True
