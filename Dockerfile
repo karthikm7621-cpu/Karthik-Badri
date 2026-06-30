@@ -18,7 +18,7 @@ WORKDIR /build
 COPY requirements.txt .
 
 # Install dependencies into a local user directory
-RUN pip install --user --no-cache-dir -r requirements.txt
+RUN pip install --user --no-cache-dir --default-timeout=100 -r requirements.txt
 
 # ---------------------------------------------------------
 # STAGE 2: Production
