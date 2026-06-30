@@ -166,8 +166,12 @@ button:disabled {
   text-align: center;
 }
 
-.feedback.success { color: var(--success); }
-.feedback.error { color: var(--error); }
+.feedback.success {
+  color: var(--success);
+}
+.feedback.error {
+  color: var(--error);
+}
 
 .result-container {
   background: rgba(15, 23, 42, 0.9);
@@ -211,7 +215,9 @@ pre.empty-state {
 }
 
 @keyframes spin {
-  to { transform: rotate(360deg); }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 @media (max-width: 900px) {

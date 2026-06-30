@@ -7,40 +7,61 @@ from flask import Blueprint, jsonify, request
 
 from app.extensions import db
 from app.models import (
-    Employee, Candidate, User, Stream,
-    LeaveRequest, AttendanceRecord, ExpenseReimbursement, HRTicket
+    Employee,
+    Candidate,
+    User,
+    Stream,
+    LeaveRequest,
+    AttendanceRecord,
+    ExpenseReimbursement,
+    HRTicket,
 )
 from app.services import (
-    initialize_rag_index, get_llm, verify_face, process_leave_with_llm,
-    transcribe_audio, extract_text_from_image, process_expense_with_llm,
-    extract_text_from_pdf, parse_hr_ticket, resolve_authenticated_user,
-    is_owner, get_request_data
+    initialize_rag_index,
+    get_llm,
+    verify_face,
+    process_leave_with_llm,
+    transcribe_audio,
+    extract_text_from_image,
+    process_expense_with_llm,
+    extract_text_from_pdf,
+    parse_hr_ticket,
+    resolve_authenticated_user,
+    is_owner,
+    get_request_data,
 )
 
 api_bp = Blueprint("api", __name__, url_prefix="/api")
 
+
 @api_bp.route("/employees", methods=["GET"])
 def get_employees() -> Any:
     employees = Employee.query.all()
-    return jsonify([
-        {
-            "id": e.id,
-            "employee_id_string": e.employee_id_string,
-            "full_name": e.full_name,
-            "department": e.department,
-            "role": e.role,
-        }
-        for e in employees
-    ])
+    return jsonify(
+        [
+            {
+                "id": e.id,
+                "employee_id_string": e.employee_id_string,
+                "full_name": e.full_name,
+                "department": e.department,
+                "role": e.role,
+            }
+            for e in employees
+        ]
+    )
+
 
 @api_bp.route("/dashboard", methods=["GET"])
 def get_dashboard() -> Any:
     leaves = LeaveRequest.query.all()
     attendance = AttendanceRecord.query.all()
-    return jsonify({
-        "leave_count": len(leaves),
-        "attendance_count": len(attendance),
-    })
+    return jsonify(
+        {
+            "leave_count": len(leaves),
+            "attendance_count": len(attendance),
+        }
+    )
+
 
 @api_bp.route("/sync-attendance", methods=["POST"])
 def sync_attendance() -> Any:
@@ -59,6 +80,7 @@ def sync_attendance() -> Any:
     db.session.commit()
     return jsonify({"message": "Attendance synced successfully"})
 
+
 @api_bp.route("/ask-policy", methods=["POST"])
 def ask_policy() -> Any:
     payload = request.get_json(silent=True) or {}
@@ -75,6 +97,7 @@ def ask_policy() -> Any:
                 from sentence_transformers import SentenceTransformer
                 import numpy as np
                 import app.services
+
                 if app.services.RAG_EMBEDDING_MODEL is None:
                     app.services.RAG_EMBEDDING_MODEL = SentenceTransformer("all-MiniLM-L6-v2")
                 embedding = app.services.RAG_EMBEDDING_MODEL.encode(
@@ -112,6 +135,7 @@ def ask_policy() -> Any:
     except Exception as exc:
         return jsonify({"answer": "I cannot find the answer in the policy.", "error": str(exc)})
 
+
 @api_bp.route("/verify-attendance", methods=["POST"])
 def verify_attendance() -> Any:
     if "image" not in request.files:
@@ -132,6 +156,7 @@ def verify_attendance() -> Any:
     db.session.add(record)
     db.session.commit()
     return jsonify({"status": "success", "message": "Attendance verified"})
+
 
 @api_bp.route("/submit-leave", methods=["POST"])
 def submit_leave() -> Any:
@@ -159,6 +184,7 @@ def submit_leave() -> Any:
     db.session.commit()
     return jsonify({"status": "success", "extracted_data": extracted_data})
 
+
 @api_bp.route("/submit-audio-leave", methods=["POST"])
 def submit_audio_leave() -> Any:
     if "audio" not in request.files:
@@ -184,18 +210,24 @@ def submit_audio_leave() -> Any:
 
         reason = extracted_data.get("reason", "")
         leave_req = LeaveRequest(
-            employee_id=employee_id, start_date=start_date, end_date=end_date, reason_raw_text=reason
+            employee_id=employee_id,
+            start_date=start_date,
+            end_date=end_date,
+            reason_raw_text=reason,
         )
         db.session.add(leave_req)
         db.session.commit()
-        return jsonify({
-            "status": "success",
-            "transcription": transcribed_text,
-            "extracted_data": extracted_data,
-        })
+        return jsonify(
+            {
+                "status": "success",
+                "transcription": transcribed_text,
+                "extracted_data": extracted_data,
+            }
+        )
     finally:
         if os.path.exists(temp_path):
             os.remove(temp_path)
+
 
 @api_bp.route("/submit-receipt", methods=["POST"])
 def submit_receipt() -> Any:
@@ -225,18 +257,25 @@ def submit_receipt() -> Any:
         db.session.add(expense)
         db.session.commit()
 
-        return jsonify({
-            "status": "success",
-            "ocr_text": raw_text,
-            "extracted_data": structured_data,
-            "expense": {
-                "id": expense.id, "vendor": expense.vendor, "date": expense.date,
-                "amount": expense.amount, "currency": expense.currency, "status": expense.status
+        return jsonify(
+            {
+                "status": "success",
+                "ocr_text": raw_text,
+                "extracted_data": structured_data,
+                "expense": {
+                    "id": expense.id,
+                    "vendor": expense.vendor,
+                    "date": expense.date,
+                    "amount": expense.amount,
+                    "currency": expense.currency,
+                    "status": expense.status,
+                },
             }
-        })
+        )
     finally:
         if os.path.exists(temp_path):
             os.remove(temp_path)
+
 
 @api_bp.route("/upload-resume", methods=["POST"])
 def upload_resume() -> Any:
@@ -285,6 +324,7 @@ def upload_resume() -> Any:
             parsed = json.loads(output_text)
         except Exception:
             import re
+
             m = re.search(r"\{.*\}", output_text, re.S)
             if m:
                 try:
@@ -305,24 +345,27 @@ def upload_resume() -> Any:
                 email=parsed.get("email"),
                 skills=json.dumps(skills_val),
                 years_of_experience=int(parsed.get("years_of_experience") or 0),
-                status="New"
+                status="New",
             )
             db.session.add(candidate)
             db.session.commit()
         except Exception as e:
             return jsonify({"error": "Failed to save candidate", "detail": str(e)}), 500
 
-        return jsonify({
-            "status": "success",
-            "candidate_id": candidate.id,
-            "extracted": parsed,
-        }), 200
+        return jsonify(
+            {
+                "status": "success",
+                "candidate_id": candidate.id,
+                "extracted": parsed,
+            }
+        ), 200
     finally:
         if os.path.exists(temp_path):
             try:
                 os.remove(temp_path)
             except Exception:
                 pass
+
 
 @api_bp.route("/submit-hr-ticket", methods=["POST"])
 def submit_hr_ticket() -> Any:
@@ -343,9 +386,8 @@ def submit_hr_ticket() -> Any:
     )
     db.session.add(ticket)
     db.session.commit()
-    return jsonify({
-        "status": "success", "ticket_id": ticket.id, "extracted_data": extracted_data
-    })
+    return jsonify({"status": "success", "ticket_id": ticket.id, "extracted_data": extracted_data})
+
 
 @api_bp.route("/pending-users", methods=["GET"])
 def pending_users() -> Any:
@@ -355,6 +397,7 @@ def pending_users() -> Any:
 
     users = User.query.filter_by(status="Pending").order_by(User.created_at.asc()).all()
     return jsonify({"success": True, "users": [user.to_dict() for user in users]})
+
 
 @api_bp.route("/approve-user", methods=["POST"])
 def approve_user() -> Any:
@@ -375,6 +418,7 @@ def approve_user() -> Any:
     db.session.commit()
     return jsonify({"success": True, "message": "User approved.", "user": user.to_dict()})
 
+
 @api_bp.route("/delegate-owner", methods=["POST"])
 def delegate_owner() -> Any:
     auth_user = resolve_authenticated_user()
@@ -391,11 +435,16 @@ def delegate_owner() -> Any:
         return jsonify({"success": False, "message": "User not found."}), 404
 
     if user.role not in {"Employee", "Delegated Owner"}:
-        return jsonify({"success": False, "message": "Only Employee or Delegated Owner can be upgraded."}), 400
+        return jsonify(
+            {"success": False, "message": "Only Employee or Delegated Owner can be upgraded."}
+        ), 400
 
     user.role = "Delegated Owner"
     db.session.commit()
-    return jsonify({"success": True, "message": "User delegated owner access.", "user": user.to_dict()})
+    return jsonify(
+        {"success": True, "message": "User delegated owner access.", "user": user.to_dict()}
+    )
+
 
 @api_bp.route("/add-stream", methods=["POST"])
 def add_stream() -> Any:

@@ -10,15 +10,17 @@ ENV PYTHONUNBUFFERED=1
 # Install system build dependencies (if required for C-extensions)
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
+    cmake \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /build
 
 # Copy requirements file first for layer caching
-COPY requirements.txt .
+COPY requirements.txt ml-requirements.txt ./
 
 # Install dependencies into a local user directory
-RUN pip install --user --no-cache-dir -r requirements.txt
+# We install build-essential just in case, and use no-cache-dir
+RUN pip install --user --no-cache-dir --default-timeout=100 -r requirements.txt -r ml-requirements.txt
 
 # ---------------------------------------------------------
 # STAGE 2: Production

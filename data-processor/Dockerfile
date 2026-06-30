@@ -10,7 +10,7 @@ WORKDIR /build
 COPY requirements.txt .
 
 # Install dependencies into a local directory for efficient layer caching
-RUN pip install --user --no-cache-dir -r requirements.txt
+RUN pip install --user --no-cache-dir --default-timeout=100 -r requirements.txt
 
 # Final production stage
 FROM python:3.11-slim
