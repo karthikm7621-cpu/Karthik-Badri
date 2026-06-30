@@ -28,20 +28,10 @@ workflow:
     - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
     - if: $CI_COMMIT_TAG
 
-.python_setup:
-  image: python:3.11-slim
-  before_script:
-    - python -m pip install --upgrade pip
-    - python -m pip install -r requirements.txt
-    - python -m pip install ruff mypy bandit pytest pytest-cov pip-audit coverage
-
 frontend_format:
   stage: format
-  image: node:20-alpine
-  before_script:
-    - npm install
   script:
-    - npm run format:check
+    - docker run --rm -v "${PWD}:/app" -w /app node:20-alpine sh -c "npm install && npm run format:check"
   rules:
     - changes:
       - "**/*.js"
@@ -51,11 +41,9 @@ frontend_format:
       - "biome.json"
 
 backend_format:
-  extends: .python_setup
   stage: format
   script:
-    - python -m ruff format --check .
-    - python -m ruff check .
+    - docker run --rm -v "${PWD}:/app" -v "${PWD}/.cache/pip:/root/.cache/pip" -w /app python:3.11-slim bash -c "pip install ruff && ruff format --check . && ruff check ."
   rules:
     - changes:
       - "**/*.py"
@@ -64,12 +52,8 @@ backend_format:
 
 frontend_lint:
   stage: lint
-  image: node:20-alpine
-  before_script:
-    - npm install
   script:
-    - npm run lint
-    - npm run deadcode
+    - docker run --rm -v "${PWD}:/app" -w /app node:20-alpine sh -c "npm install && npm run lint && npm run deadcode"
   rules:
     - changes:
       - "**/*.js"
@@ -79,10 +63,9 @@ frontend_lint:
       - "knip.json"
 
 backend_lint:
-  extends: .python_setup
   stage: lint
   script:
-    - python -m ruff check .
+    - docker run --rm -v "${PWD}:/app" -v "${PWD}/.cache/pip:/root/.cache/pip" -w /app python:3.11-slim bash -c "pip install ruff && ruff check ."
   rules:
     - changes:
       - "**/*.py"
@@ -90,10 +73,9 @@ backend_lint:
       - "pyproject.toml"
 
 type_check:
-  extends: .python_setup
   stage: type_check
   script:
-    - python -m mypy app run.py --ignore-missing-imports
+    - docker run --rm -v "${PWD}:/app" -v "${PWD}/.cache/pip:/root/.cache/pip" -w /app python:3.11-slim bash -c "pip install mypy -r requirements.txt && mypy app run.py --ignore-missing-imports"
   rules:
     - changes:
       - "**/*.py"
@@ -101,10 +83,9 @@ type_check:
       - "pyproject.toml"
 
 security_bandit:
-  extends: .python_setup
   stage: security
   script:
-    - python -m bandit -r . -ll -c pyproject.toml
+    - docker run --rm -v "${PWD}:/app" -v "${PWD}/.cache/pip:/root/.cache/pip" -w /app python:3.11-slim bash -c "pip install bandit && bandit -r . -ll -c pyproject.toml"
   rules:
     - changes:
       - "**/*.py"
@@ -117,10 +98,9 @@ security_gitleaks:
     - docker run --rm -v "${PWD}:/path" zricethezav/gitleaks:latest detect --source /path -v
 
 dependency_audit:
-  extends: .python_setup
   stage: dependency-audit
   script:
-    - python -m pip_audit --format json --output pip-audit-report.json
+    - docker run --rm -v "${PWD}:/app" -v "${PWD}/.cache/pip:/root/.cache/pip" -w /app python:3.11-slim bash -c "pip install pip-audit && pip-audit --format json --output pip-audit-report.json"
   artifacts:
     when: always
     expire_in: 14 days
@@ -128,11 +108,9 @@ dependency_audit:
       - pip-audit-report.json
 
 backend_coverage:
-  extends: .python_setup
   stage: test
   script:
-    - python -m pytest --cov=. --cov-fail-under=85 --cov-report=term-missing --cov-report=xml:coverage/backend/coverage.xml --cov-report=html:coverage/backend/html --junitxml=coverage/backend/junit.xml
-    - python -m coverage report --precision=2
+    - docker run --rm -v "${PWD}:/app" -v "${PWD}/.cache/pip:/root/.cache/pip" -w /app python:3.11-slim bash -c "pip install pytest pytest-cov coverage -r requirements.txt && pytest --cov=. --cov-fail-under=85 --cov-report=term-missing --cov-report=xml:coverage/backend/coverage.xml --cov-report=html:coverage/backend/html --junitxml=coverage/backend/junit.xml && coverage report --precision=2"
   coverage: '/TOTAL\s+\d+\s+\d+\s+(\d+(?:\.\d+)?)%/'
   rules:
     - changes:
@@ -152,11 +130,8 @@ backend_coverage:
 
 frontend_coverage:
   stage: test
-  image: node:20-alpine
-  before_script:
-    - npm install
   script:
-    - npm run test:ci
+    - docker run --rm -v "${PWD}:/app" -w /app node:20-alpine sh -c "npm install && npm run test:ci"
   coverage: '/All files[^|]*\|[^|]*\s+(\d+(?:\.\d+)?)/'
   rules:
     - changes:
@@ -177,10 +152,6 @@ frontend_coverage:
 
 build:
   stage: build
-  image: docker:24.0.5
-  services:
-    - docker:24.0.5-dind
-  before_script: []
   script:
     - docker pull $CI_REGISTRY_IMAGE:latest || true
     - docker build --cache-from $CI_REGISTRY_IMAGE:latest -t "$CI_REGISTRY_IMAGE:$CI_COMMIT_SHA" .
