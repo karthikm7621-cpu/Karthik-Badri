@@ -7,224 +7,333 @@
   <!-- Primary Meta Tags -->
   <title>CPU-First EMS | Offline-First Employee Management</title>
   <meta name="title" content="CPU-First EMS | Offline-First Employee Management">
-  <meta name="description" content="[Project Purpose - e.g., A resilient, offline-first Employee Management System designed for high-performance data processing and queue management.]">
-  <meta name="keywords" content="EMS, Employee Management, Offline-first, Flask, Data Processor">
-  <meta name="theme-color" content="#0f172a">
+  <meta name="description" content="A resilient, offline-first Employee Management System designed for high-performance data processing and queue management.">
+  <meta name="theme-color" content="#030305">
   
-  <!-- Open Graph / Facebook -->
-  <meta property="og:type" content="website">
-  <meta property="og:url" content="[Production URL, e.g., https://ems.yourdomain.com/]">
-  <meta property="og:title" content="CPU-First EMS">
-  <meta property="og:description" content="[Project Purpose - e.g., A resilient, offline-first Employee Management System designed for high-performance data processing and queue management.]">
-  <meta property="og:image" content="/static/preview.png">
-
-  <!-- Twitter -->
-  <meta property="twitter:card" content="summary_large_image">
-  <meta property="twitter:url" content="[Production URL, e.g., https://ems.yourdomain.com/]">
-  <meta property="twitter:title" content="CPU-First EMS">
-  <meta property="twitter:description" content="[Project Purpose - e.g., A resilient, offline-first Employee Management System designed for high-performance data processing and queue management.]">
-  <meta property="twitter:image" content="/static/preview.png">
-
-  <!-- Assets -->
-  <link rel="manifest" href="/static/manifest.json">
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Outfit:wght@500;700;800&display=swap" rel="stylesheet">
+  
   <link rel="stylesheet" href="/static/styles.css">
 </head>
 <body>
-  <header class="hero">
-    <div class="hero__content">
-      <div style="display: flex; justify-content: space-between; align-items: flex-start;">
-        <div>
-          <p class="eyebrow">Offline-first employee management</p>
-          <h1>CPU-First EMS</h1>
-          <p>Track attendance, queue submissions, and manage leave requests even when the network is unavailable.</p>
-        </div>
+  <!-- Decorative Background Elements -->
+  <div class="bg-orb bg-orb-1"></div>
+  <div class="bg-orb bg-orb-2"></div>
+  
+  <!-- Join Request Modal -->
+  <div id="join-modal" class="modal-overlay hidden">
+    <div class="card auth-card">
+      <div class="card__header" style="text-align: center; margin-bottom: 2rem;">
+        <h2 style="font-size: 2rem; margin-bottom: 0.5rem; background: var(--accent-gradient); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">Join Team</h2>
+        <p>Submit a request to the Owner to get added to the Directory.</p>
       </div>
-      <div class="hero__status" id="connection-status" role="status">Checking connectivity…</div>
+      <form id="join-form" class="form" novalidate>
+        <label class="field">
+          <span>Full Name</span>
+          <input type="text" id="join-name" required placeholder="Enter full name">
+        </label>
+        <label class="field">
+          <span>Department / Stream</span>
+          <input type="text" id="join-department" required placeholder="e.g. Frontend, Data Science">
+        </label>
+        <label class="field">
+          <span>Requested Role</span>
+          <select id="join-role">
+            <option value="Employee">Employee</option>
+            <option value="Delegated Owner">Delegated Owner</option>
+          </select>
+        </label>
+        <div style="display: flex; gap: 1rem; margin-top: 1rem;">
+          <button type="button" id="join-cancel-btn" class="secondary-btn">Cancel</button>
+          <button type="submit">Submit Request</button>
+        </div>
+        <p class="feedback" id="join-feedback" aria-live="polite" style="margin-top: 1rem;"></p>
+      </form>
     </div>
-  </header>
+  </div>
 
-  <!-- Dashboard View -->
-  <main class="layout" id="dashboard-view">
+  <div class="app-wrapper" id="app-wrapper">
     
-    <!-- Admin Panel (Hidden by default) -->
-    <section class="card hidden" id="admin-panel">
-      <div class="card__header">
-        <div>
-          <h2>Admin Panel</h2>
-          <p>Manage users and permissions (Owners Only).</p>
+    <!-- Sidebar Navigation -->
+    <nav class="sidebar">
+      <div class="sidebar-header">
+        <div class="logo">
+          <h2>EMS<span>.Pro</span></h2>
         </div>
-      </div>
-      <div id="pending-users-container">
-        <h3>Pending Approvals</h3>
-        <ul class="employee-list" id="pending-users-list">
-          <li style="justify-content: center; color: var(--muted);">No pending users</li>
-        </ul>
       </div>
       
-      <div id="delegation-container" class="hidden" style="margin-top: 1.5rem; padding-top: 1.5rem; border-top: 1px solid var(--border);">
-        <h3>Delegate Ownership</h3>
-        <form id="delegate-form" class="form" novalidate style="margin-top: 1rem;">
-          <label class="field">
-            <span>Select Active User</span>
-            <select id="delegate-user-select" required></select>
-          </label>
-          <button type="submit" class="secondary-btn">Grant Delegated Owner</button>
-        </form>
-        <p class="feedback" id="delegate-feedback" aria-live="polite"></p>
+      <div class="sidebar-nav">
+        <button type="button" class="nav-btn active" data-target="view-directory">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-labelledby="dirTitle"><title id="dirTitle">Directory Icon</title><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+          <span>Directory</span>
+        </button>
+        <button type="button" class="nav-btn" data-target="view-attendance">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-labelledby="attTitle"><title id="attTitle">Attendance Icon</title><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
+          <span>Attendance</span>
+        </button>
+        <button type="button" class="nav-btn" data-target="view-leave">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-labelledby="leaveTitle"><title id="leaveTitle">Leave Icon</title><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
+          <span>Leave Requests</span>
+        </button>
+        <button type="button" class="nav-btn" data-target="view-expenses">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-labelledby="expTitle"><title id="expTitle">Expense Icon</title><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+          <span>Expenses</span>
+        </button>
+        <button type="button" class="nav-btn" data-target="view-hr">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-labelledby="hrTitle"><title id="hrTitle">HR Icon</title><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
+          <span>HR Helpdesk</span>
+        </button>
+        <button type="button" class="nav-btn" data-target="view-policy">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-labelledby="policyTitle"><title id="policyTitle">Policy Chatbot Icon</title><rect x="3" y="11" width="18" height="10" rx="2"></rect><circle cx="12" cy="5" r="2"></circle><path d="M12 7v4"></path><line x1="8" y1="16" x2="8" y2="16"></line><line x1="16" y1="16" x2="16" y2="16"></line></svg>
+          <span>Policy Chatbot</span>
+        </button>
+        <button type="button" class="nav-btn hidden" data-target="view-admin" id="nav-admin">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-labelledby="adminTitle"><title id="adminTitle">Admin Panel Icon</title><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
+          <span>Admin</span>
+        </button>
       </div>
-      <div id="instant-hire-container" style="margin-top: 1.5rem; padding-top: 1.5rem; border-top: 1px solid var(--border);">
-        <h3>Instant Hire: Resume Parsing</h3>
-        <p style="margin: 0.25rem 0 0; color: var(--muted);">Upload a resume (PDF/DOC/DOCX). If offline, the file will be queued securely.</p>
-        <form id="resume-form" class="form" novalidate style="margin-top: 1rem;">
-          <label class="field">
-            <span>Resume File</span>
-            <input type="file" id="resume-upload" accept=".pdf,.doc,.docx">
-          </label>
+      
+      <div class="sidebar-footer">
+        <div class="hero__status" id="connection-status" role="status">Checking connectivity…</div>
+        <button type="button" id="join-team-btn" class="secondary-btn" style="margin-top: 1.5rem; width: 100%; border-radius: 8px; font-size: 0.9rem; padding: 0.6rem;">Request to Join Team</button>
+      </div>
+    </nav>
+    
+    <!-- Main Content Area -->
+    <main class="main-content" id="dashboard-view">
+      
+      <header class="top-header">
+        <div>
+          <p class="eyebrow">Dashboard</p>
+          <h1 id="page-title">Employee Directory</h1>
+        </div>
+      </header>
 
-          <div style="display: flex; gap: 0.6rem; align-items: center;">
-            <button type="submit">Process Resume</button>
-            <div id="resume-spinner" class="spinner hidden" aria-hidden="true" title="Processing"></div>
+      <!-- Analytics Dashboard -->
+      <section class="stat-cards" id="analytics-dashboard" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 2rem;">
+        <div class="card" style="padding: 1.5rem; text-align: center; background: rgba(30, 41, 59, 0.4);">
+          <h3 style="color: var(--text-muted); font-size: 0.9rem; font-weight: 500; text-transform: uppercase;">Total Employees</h3>
+          <p id="stat-employees" style="font-size: 2.5rem; font-weight: 700; background: var(--accent-gradient); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">-</p>
+        </div>
+        <div class="card" style="padding: 1.5rem; text-align: center; background: rgba(30, 41, 59, 0.4);">
+          <h3 style="color: var(--text-muted); font-size: 0.9rem; font-weight: 500; text-transform: uppercase;">Pending Leaves</h3>
+          <p id="stat-leaves" style="font-size: 2.5rem; font-weight: 700; color: #f59e0b;">-</p>
+        </div>
+        <div class="card" style="padding: 1.5rem; text-align: center; background: rgba(30, 41, 59, 0.4);">
+          <h3 style="color: var(--text-muted); font-size: 0.9rem; font-weight: 500; text-transform: uppercase;">Pending Expenses</h3>
+          <p id="stat-expenses" style="font-size: 2.5rem; font-weight: 700; color: #10b981;">-</p>
+        </div>
+        <div class="card" style="padding: 1.5rem; text-align: center; background: rgba(30, 41, 59, 0.4);">
+          <h3 style="color: var(--text-muted); font-size: 0.9rem; font-weight: 500; text-transform: uppercase;">Open HR Tickets</h3>
+          <p id="stat-tickets" style="font-size: 2.5rem; font-weight: 700; color: #ef4444;">-</p>
+        </div>
+      </section>
+
+      <!-- View: Admin Panel -->
+      <section class="view-section" id="view-admin">
+        <div class="card">
+          <div class="card__header">
+            <div>
+              <h2>Admin Panel</h2>
+              <p>Manage users and permissions (Owners Only).</p>
+            </div>
           </div>
-        </form>
-        <p class="feedback" id="resume-feedback" aria-live="polite"></p>
-      </div>
-    </section>
-
-    <!-- Existing Dashboard Elements -->
-    <section class="card">
-      <div class="card__header">
-        <div>
-          <h2>Employee Directory</h2>
-          <p>Active team members ready for attendance and leave actions.</p>
-        </div>
-        <span class="pill" id="queue-count">Queue: 0</span>
-      </div>
-      <ul class="employee-list" id="employee-list"></ul>
-    </section>
-
-    <section class="card">
-      <div class="card__header">
-        <div>
-          <h2>Log Attendance</h2>
-          <p>Capture a check-in or timesheet update locally and sync whenever the network returns.</p>
-        </div>
-      </div>
-      <form id="attendance-form" class="form" novalidate>
-        <label class="field">
-          <span>Employee</span>
-          <select id="attendance-employee" name="employee" required></select>
-        </label>
-        <label class="field">
-          <span>Date</span>
-          <input type="date" id="attendance-date" name="date" required>
-        </label>
-        <label class="field">
-          <span>Notes</span>
-          <textarea id="attendance-notes" name="notes" rows="4" placeholder="Optional notes for the shift"></textarea>
-        </label>
-        <button type="submit">Save Attendance</button>
-        
-        <div class="biometric-section" style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--border);">
-          <button type="button" id="start-biometric-btn" class="secondary-btn">Log Attendance via Face</button>
-          <div id="biometric-container" class="hidden" style="margin-top: 1rem; position: relative;">
-            <video id="webcam" autoplay playsinline style="width: 100%; border-radius: 16px; border: 2px solid var(--accent);"></video>
-            <div class="scanner-overlay" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: 4px solid rgba(56, 189, 248, 0.5); border-radius: 16px; box-sizing: border-box; pointer-events: none;"></div>
-            <button type="button" id="capture-biometric-btn" style="margin-top: 0.8rem;">Verify Face</button>
-            <canvas id="biometric-canvas" class="hidden"></canvas>
+          <div id="pending-users-container">
+            <h3>Pending Approvals</h3>
+            <ul class="employee-list" id="pending-users-list">
+              <li style="justify-content: center; color: var(--text-muted);">No pending users</li>
+            </ul>
+          </div>
+          
+          <div id="delegation-container" class="hidden" style="margin-top: 1.5rem; padding-top: 1.5rem; border-top: 1px solid var(--border);">
+            <h3>Delegate Ownership</h3>
+            <form id="delegate-form" class="form" novalidate style="margin-top: 1rem;">
+              <label class="field">
+                <span>Select Active User</span>
+                <select id="delegate-user-select" required></select>
+              </label>
+              <button type="submit">Grant Delegated Owner</button>
+            </form>
+            <p class="feedback" id="delegate-feedback" aria-live="polite"></p>
+          </div>
+          <div id="instant-hire-container" style="margin-top: 1.5rem; padding-top: 1.5rem; border-top: 1px solid var(--border);">
+            <h3>Instant Hire: Resume Parsing</h3>
+            <p style="margin: 0.25rem 0 0; color: var(--text-muted);">Upload a resume (PDF/DOC/DOCX). If offline, the file will be queued securely.</p>
+            <form id="resume-form" class="form" novalidate style="margin-top: 1rem;">
+              <label class="field">
+                <span>Resume File</span>
+                <input type="file" id="resume-upload" accept=".pdf,.doc,.docx">
+              </label>
+              <div style="display: flex; gap: 0.6rem; align-items: center;">
+                <button type="submit">Process Resume</button>
+                <div id="resume-spinner" class="spinner hidden" aria-hidden="true" title="Processing"></div>
+              </div>
+            </form>
+            <p class="feedback" id="resume-feedback" aria-live="polite"></p>
           </div>
         </div>
-      </form>
-      <p class="feedback" id="attendance-feedback" aria-live="polite"></p>
-    </section>
+      </section>
 
-    <section class="card">
-      <div class="card__header">
-        <div>
-          <h2>Submit Leave Request</h2>
-          <p>Write a leave note and queue it safely until the backend is reachable.</p>
+      <!-- View: Directory -->
+      <section class="view-section active" id="view-directory">
+        <div class="card">
+          <div class="card__header">
+            <div>
+              <h2>Employee Directory</h2>
+              <p>Active team members ready for attendance and leave actions.</p>
+            </div>
+            <span class="pill" id="queue-count">Queue: 0</span>
+          </div>
+          <ul class="employee-list" id="employee-list"></ul>
         </div>
-      </div>
-      <form id="leave-form" class="form" novalidate>
-        <label class="field">
-          <span>Employee</span>
-          <select id="leave-employee" name="employee" required></select>
-        </label>
-        <label class="field">
-          <span>Leave Request</span>
-          <textarea id="leave-request" name="request" rows="6" placeholder="Describe the leave details, dates, and reason"></textarea>
-        </label>
-        <button type="submit">Queue Leave Request</button>
-        
-        <div class="audio-recorder">
-          <button type="button" id="record-btn" class="secondary-btn">Hold to Record Voice Note</button>
-          <span id="recording-indicator" class="recording-indicator hidden">Recording...</span>
-          <audio id="audio-playback" controls class="hidden"></audio>
-          <button type="button" id="submit-audio-btn" class="hidden">Submit Voice Note</button>
-        </div>
-      </form>
-      <p class="feedback" id="leave-feedback" aria-live="polite"></p>
-    </section>
+      </section>
 
-    <section class="card">
-      <div class="card__header">
-        <div>
-          <h2>Expense Reimbursement</h2>
-          <p>Snap a receipt and queue it for OCR-based expense parsing.</p>
+      <!-- View: Attendance -->
+      <section class="view-section" id="view-attendance">
+        <div class="card">
+          <div class="card__header">
+            <div>
+              <h2>Log Attendance</h2>
+              <p>Capture a check-in or timesheet update locally and sync whenever the network returns.</p>
+            </div>
+          </div>
+          <form id="attendance-form" class="form" novalidate>
+            <label class="field">
+              <span>Employee</span>
+              <select id="attendance-employee" name="employee" required></select>
+            </label>
+            <label class="field">
+              <span>Date</span>
+              <input type="date" id="attendance-date" name="date" required>
+            </label>
+            <label class="field">
+              <span>Notes</span>
+              <textarea id="attendance-notes" name="notes" rows="4" placeholder="Optional notes for the shift"></textarea>
+            </label>
+            <button type="submit">Save Attendance</button>
+            
+            <div class="biometric-section" style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--border);">
+              <button type="button" id="start-biometric-btn" class="secondary-btn">Log Attendance via Face</button>
+              <div id="biometric-container" class="hidden" style="margin-top: 1rem; position: relative;">
+                <video id="webcam" autoplay playsinline style="width: 100%; border-radius: 16px; border: 2px solid var(--accent-cyan);">
+                  <track kind="captions" />
+                </video>
+                <div class="scanner-overlay" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: 4px solid rgba(0, 240, 255, 0.5); border-radius: 16px; box-sizing: border-box; pointer-events: none;"></div>
+                <button type="button" id="capture-biometric-btn" style="margin-top: 0.8rem;">Verify Face</button>
+                <canvas id="biometric-canvas" class="hidden"></canvas>
+              </div>
+            </div>
+          </form>
+          <p class="feedback" id="attendance-feedback" aria-live="polite"></p>
         </div>
-      </div>
-      <form id="receipt-form" class="form" novalidate>
-        <label class="field">
-          <span>Employee</span>
-          <select id="receipt-employee" name="employee"></select>
-        </label>
-        <label class="field">
-          <span>Receipt Image</span>
-          <label class="receipt-upload">
-            <input id="receipt-file-input" type="file" accept="image/*" capture="environment">
-            <span>Snap Receipt</span>
-          </label>
-        </label>
-        <img id="receipt-preview" class="receipt-preview hidden" alt="Receipt preview">
-        <button type="button" id="submit-expense-btn">Submit Expense</button>
-      </form>
-      <p class="feedback" id="receipt-feedback" aria-live="polite"></p>
-    </section>
+      </section>
 
-    <section class="card">
-      <div class="card__header">
-        <div>
-          <h2>HR Support Helpdesk</h2>
-          <p>Explain your issue in any language (e.g., English, Hindi, Telugu).</p>
+      <!-- View: Leave -->
+      <section class="view-section" id="view-leave">
+        <div class="card">
+          <div class="card__header">
+            <div>
+              <h2>Submit Leave Request</h2>
+              <p>Write a leave note and queue it safely until the backend is reachable.</p>
+            </div>
+          </div>
+          <form id="leave-form" class="form" novalidate>
+            <label class="field">
+              <span>Employee</span>
+              <select id="leave-employee" name="employee" required></select>
+            </label>
+            <label class="field">
+              <span>Leave Request</span>
+              <textarea id="leave-request" name="request" rows="6" placeholder="Describe the leave details, dates, and reason"></textarea>
+            </label>
+            <button type="submit">Queue Leave Request</button>
+            
+            <div class="audio-recorder">
+              <button type="button" id="record-btn" class="secondary-btn">Hold to Record Voice Note</button>
+              <span id="recording-indicator" class="recording-indicator hidden">Recording...</span>
+              <audio id="audio-playback" controls class="hidden">
+                <track kind="captions" />
+              </audio>
+              <button type="button" id="submit-audio-btn" class="hidden">Submit Voice Note</button>
+            </div>
+          </form>
+          <p class="feedback" id="leave-feedback" aria-live="polite"></p>
         </div>
-      </div>
-      <form id="hr-form" class="form" novalidate>
-        <label class="field">
-          <span>Employee</span>
-          <select id="hr-employee" name="employee" required></select>
-        </label>
-        <label class="field">
-          <span>Describe Your Issue</span>
-          <textarea id="hr-request" name="raw_text" rows="6" placeholder="Type your HR issue here in your native language..." required></textarea>
-        </label>
-        <button type="submit">Submit Ticket</button>
-      </form>
-      <p class="feedback" id="hr-feedback" aria-live="polite"></p>
-    </section>
+      </section>
 
-    <section class="card">
-      <div class="card__header">
-        <div>
-          <h2>Policy Chatbot</h2>
-          <p>Ask policy questions and get context-aware answers from the offline handbook.</p>
+      <!-- View: Expenses -->
+      <section class="view-section" id="view-expenses">
+        <div class="card">
+          <div class="card__header">
+            <div>
+              <h2>Expense Reimbursement</h2>
+              <p>Snap a receipt and queue it for OCR-based expense parsing.</p>
+            </div>
+          </div>
+          <form id="receipt-form" class="form" novalidate>
+            <label class="field">
+              <span>Employee</span>
+              <select id="receipt-employee" name="employee"></select>
+            </label>
+            <label class="field">
+              <span>Receipt Image</span>
+              <label class="receipt-upload">
+                <input id="receipt-file-input" type="file" accept="image/*" capture="environment">
+                <span>Snap Receipt</span>
+              </label>
+            </label>
+            <img id="receipt-preview" class="receipt-preview hidden" alt="Receipt preview">
+            <button type="button" id="submit-expense-btn">Submit Expense</button>
+          </form>
+          <p class="feedback" id="receipt-feedback" aria-live="polite"></p>
         </div>
-      </div>
-      <div id="policy-chat-history" class="policy-chat-history" aria-live="polite"></div>
-      <form id="policy-chat-form" class="policy-chat-form" novalidate>
-        <input id="policy-chat-input" type="text" placeholder="Ask about leave, remote work, or benefits..." autocomplete="off">
-        <button type="submit">Send</button>
-      </form>
-    </section>
-  </main>
+      </section>
+
+      <!-- View: HR Helpdesk -->
+      <section class="view-section" id="view-hr">
+        <div class="card">
+          <div class="card__header">
+            <div>
+              <h2>HR Support Helpdesk</h2>
+              <p>Explain your issue in any language (e.g., English, Hindi, Telugu).</p>
+            </div>
+          </div>
+          <form id="hr-form" class="form" novalidate>
+            <label class="field">
+              <span>Employee</span>
+              <select id="hr-employee" name="employee" required></select>
+            </label>
+            <label class="field">
+              <span>Describe Your Issue</span>
+              <textarea id="hr-request" name="raw_text" rows="6" placeholder="Type your HR issue here in your native language..." required></textarea>
+            </label>
+            <button type="submit">Submit Ticket</button>
+          </form>
+          <p class="feedback" id="hr-feedback" aria-live="polite"></p>
+        </div>
+      </section>
+
+      <!-- View: Policy Chatbot -->
+      <section class="view-section" id="view-policy">
+        <div class="card">
+          <div class="card__header">
+            <div>
+              <h2>Policy Chatbot</h2>
+              <p>Ask policy questions and get context-aware answers from the offline handbook.</p>
+            </div>
+          </div>
+          <div id="policy-chat-history" class="policy-chat-history" aria-live="polite"></div>
+          <form id="policy-chat-form" class="policy-chat-form" novalidate>
+            <input id="policy-chat-input" type="text" placeholder="Ask about leave, remote work, or benefits..." autocomplete="off">
+            <button type="submit">Send</button>
+          </form>
+        </div>
+      </section>
+
+    </main>
+  </div>
 
   <script src="/static/db.js"></script>
   <script src="/static/app.js"></script>

@@ -18,7 +18,9 @@
     "ci": "npm run check && npm run deadcode && npm run test:ci"
   },
   "lint-staged": {
-    "*.{js,json,css,html,md,yml,yaml}": ["biome check --write --no-errors-on-unmatched"]
+    "*.{js,json,css,html,md,yml,yaml}": [
+      "biome check --write --no-errors-on-unmatched"
+    ]
   },
   "devDependencies": {
     "@biomejs/biome": "^1.9.4",

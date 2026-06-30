@@ -32,9 +32,25 @@ def create_app(config_object=None):
     app.register_blueprint(main_bp)
     app.register_blueprint(api_bp)
 
+    import logging
+    from flask import request
+    from datetime import datetime
+
+    # Setup audit logger
+    audit_logger = logging.getLogger("audit")
+    audit_logger.setLevel(logging.INFO)
+    file_handler = logging.FileHandler("audit.log")
+    file_handler.setFormatter(logging.Formatter("%(asctime)s - %(message)s"))
+    audit_logger.addHandler(file_handler)
+
+    @app.before_request
+    def log_api_requests():
+        if request.path.startswith("/api/"):
+            audit_logger.info(f"Method: {request.method} | Path: {request.path} | IP: {request.remote_addr}")
+
     @app.before_request
     def seed_default_users_if_needed():
-        from app.models import User
+        from app.models import User, Employee
 
         if not app.config.get("_seeded", False):
             # Workaround for setting config before request in multi-threaded environment
@@ -42,27 +58,49 @@ def create_app(config_object=None):
             try:
                 db.create_all()
                 if not User.query.filter_by(username="Owner1").first():
-                    db.session.add(
-                        User(
-                            username="Owner1",
-                            password_hash=generate_password_hash("Karthik@7621"),
-                            role="Main Owner",
-                            status="Active",
-                            stream="Backend",
-                        )
+                    owner_user = User(
+                        username="Owner1",
+                        password_hash=generate_password_hash("Karthik@7621"),
+                        role="Main Owner",
+                        status="Active",
+                        stream="Backend",
                     )
+                    db.session.add(owner_user)
+                    
+                    owner_emp = Employee(
+                        employee_id_string="EMP-1000",
+                        full_name="Owner1",
+                        department="Backend",
+                        role="Main Owner",
+                        username="Owner1",
+                        status="Active",
+                        stream="Backend"
+                    )
+                    db.session.add(owner_emp)
+
                 if not User.query.filter_by(username="karthik").first():
-                    db.session.add(
-                        User(
-                            username="karthik",
-                            password_hash=generate_password_hash("Karthik@7621"),
-                            role="Employee",
-                            status="Active",
-                            stream="Frontend",
-                        )
+                    karthik_user = User(
+                        username="karthik",
+                        password_hash=generate_password_hash("Karthik@7621"),
+                        role="Employee",
+                        status="Active",
+                        stream="Frontend",
                     )
+                    db.session.add(karthik_user)
+                    
+                    karthik_emp = Employee(
+                        employee_id_string="EMP-1001",
+                        full_name="karthik",
+                        department="Frontend",
+                        role="Employee",
+                        username="karthik",
+                        status="Active",
+                        stream="Frontend"
+                    )
+                    db.session.add(karthik_emp)
+
                 db.session.commit()
-            except Exception:
+            except Exception as e:
                 db.session.rollback()
 
     return app

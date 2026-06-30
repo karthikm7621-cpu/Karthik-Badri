@@ -3,7 +3,8 @@ import os
 import re
 from datetime import datetime
 from typing import Any, Dict, List, Optional, Tuple
-from flask import request
+from flask import request, current_app
+from itsdangerous import URLSafeTimedSerializer
 from app.models import User
 
 RAG_EMBEDDING_MODEL: Optional[Any] = None
@@ -319,6 +320,17 @@ def get_request_data() -> Dict[str, Any]:
         return data
     return request.form.to_dict()
 
+
+def generate_auth_token(username: str) -> str:
+    s = URLSafeTimedSerializer(current_app.config.get('SECRET_KEY', 'dev-key-123'))
+    return s.dumps(username)
+
+def verify_auth_token(token: str) -> Optional[str]:
+    s = URLSafeTimedSerializer(current_app.config.get('SECRET_KEY', 'dev-key-123'))
+    try:
+        return s.loads(token, max_age=86400) # 24 hours
+    except Exception:
+        return None
 
 def resolve_authenticated_user() -> Any:
     return User.query.filter_by(username="Owner1").first()

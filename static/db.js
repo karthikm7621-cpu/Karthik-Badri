@@ -92,6 +92,12 @@
           fetchOptions.body = JSON.stringify(entry.payload);
         }
 
+        const token = localStorage.getItem('ems_token');
+        if (token) {
+          fetchOptions.headers = fetchOptions.headers || {};
+          fetchOptions.headers.Authorization = `Bearer ${token}`;
+        }
+
         const response = await fetch(`/api/${entry.endpoint}`, fetchOptions);
 
         if (!response.ok) {
@@ -104,9 +110,7 @@
           deleteRequest.onerror = () => reject(deleteRequest.error);
         });
         syncedCount += 1;
-      } catch (error) {
-        console.warn('Queue sync failed', error);
-      }
+      } catch (_error) {}
     }
 
     database.close();

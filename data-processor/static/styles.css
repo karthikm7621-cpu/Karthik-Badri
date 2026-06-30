@@ -141,7 +141,9 @@ button {
   cursor: pointer;
   background: linear-gradient(135deg, var(--accent), #67e8f9);
   color: #08101f;
-  transition: transform 0.1s, box-shadow 0.2s;
+  transition:
+    transform 0.1s,
+    box-shadow 0.2s;
   display: flex;
   justify-content: center;
   align-items: center;
@@ -201,7 +203,7 @@ pre.empty-state {
 }
 
 .hidden {
-  display: none !important;
+  display: none;
 }
 
 /* Spinner Animation */

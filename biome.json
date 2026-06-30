@@ -1,5 +1,5 @@
 {
-  "$schema": "https://biomejs.dev/schemas/1.9.4/schema.json",
+  "$schema": "https://biomejs.dev/schemas/2.5.1/schema.json",
   "vcs": {
     "enabled": true,
     "clientKind": "git",
@@ -7,17 +7,18 @@
   },
   "files": {
     "ignoreUnknown": false,
-    "ignore": [
-      "venv/**",
-      ".venv/**",
-      "__pycache__/**",
-      ".pytest_cache/**",
-      ".mypy_cache/**",
-      "coverage/**",
-      "htmlcov/**",
-      "node_modules/**",
-      "instance/**",
-      "static/policy_handbook.txt"
+    "includes": [
+      "**",
+      "!**/venv",
+      "!**/.venv",
+      "!**/__pycache__",
+      "!**/.pytest_cache",
+      "!**/.mypy_cache",
+      "!**/coverage",
+      "!**/htmlcov",
+      "!**/node_modules",
+      "!**/instance",
+      "!**/static/policy_handbook.txt"
     ]
   },
   "formatter": {
@@ -68,21 +69,19 @@
       "enabled": true
     }
   },
-  "organizeImports": {
-    "enabled": true
-  },
+  "assist": { "actions": { "source": { "organizeImports": "on" } } },
   "linter": {
     "enabled": true,
     "rules": {
-      "recommended": true,
+      "preset": "recommended",
       "a11y": {
-        "recommended": true,
+        "preset": "recommended",
         "noAutofocus": "warn",
         "useButtonType": "error",
         "useKeyWithClickEvents": "error"
       },
       "complexity": {
-        "recommended": true,
+        "preset": "recommended",
         "noBannedTypes": "error",
         "noExtraBooleanCast": "error",
         "noForEach": "off",
@@ -93,7 +92,7 @@
         "useSimplifiedLogicExpression": "warn"
       },
       "correctness": {
-        "recommended": true,
+        "preset": "recommended",
         "noChildrenProp": "off",
         "noConstAssign": "error",
         "noGlobalObjectCalls": "error",
@@ -106,11 +105,11 @@
         "useValidForDirection": "error"
       },
       "security": {
-        "recommended": true,
+        "preset": "recommended",
         "noDangerouslySetInnerHtml": "off"
       },
       "style": {
-        "recommended": true,
+        "preset": "recommended",
         "noImplicitBoolean": "off",
         "noNonNullAssertion": "error",
         "useBlockStatements": "error",
@@ -125,8 +124,7 @@
         "useTemplate": "warn"
       },
       "suspicious": {
-        "recommended": true,
-        "noConsoleLog": "warn",
+        "preset": "recommended",
         "noDebugger": "error",
         "noExplicitAny": "off",
         "noGlobalAssign": "error",
@@ -136,7 +134,8 @@
         "noUnsafeDeclarationMerging": "error",
         "useAwait": "warn",
         "useGetterReturn": "error",
-        "useIsArray": "error"
+        "useIsArray": "error",
+        "noConsole": { "level": "warn", "options": { "allow": ["log"] } }
       }
     }
   }

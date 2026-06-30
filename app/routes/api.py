@@ -27,9 +27,11 @@ from app.services import (
     extract_text_from_pdf,
     parse_hr_ticket,
     resolve_authenticated_user,
+    generate_auth_token,
     is_owner,
     get_request_data,
 )
+from werkzeug.security import generate_password_hash, check_password_hash
 
 api_bp = Blueprint("api", __name__, url_prefix="/api")
 
@@ -51,31 +53,131 @@ def get_employees() -> Any:
     )
 
 
+@api_bp.route("/request-join", methods=["POST"])
+def request_join() -> Any:
+    data = get_request_data()
+    username = (data.get("username") or "").strip()
+    role = (data.get("role") or "Employee").strip()
+    department = (data.get("department") or "General").strip()
+    
+    if not username:
+        return jsonify({"success": False, "message": "Username/Name required"}), 400
+        
+    if User.query.filter_by(username=username).first():
+        return jsonify({"success": False, "message": "User already exists"}), 400
+        
+    user = User(
+        username=username,
+        password_hash=generate_password_hash("dummy"),
+        role=role,
+        stream=department,
+        status="Pending"
+    )
+    db.session.add(user)
+    db.session.commit()
+    
+    return jsonify({"success": True, "message": "Join request submitted. Please wait for owner approval."})
+
+@api_bp.route("/login", methods=["POST"])
+def login() -> Any:
+    data = get_request_data()
+    username = (data.get("username") or "").strip()
+    password = (data.get("password") or "").strip()
+    
+    user = User.query.filter_by(username=username).first()
+    if not user or not check_password_hash(user.password_hash, password):
+        return jsonify({"success": False, "message": "Invalid credentials"}), 401
+        
+    if user.status != "Active":
+        return jsonify({"success": False, "message": "Account pending approval"}), 403
+        
+    token = generate_auth_token(username)
+    return jsonify({
+        "success": True,
+        "token": token,
+        "user": user.to_dict()
+    })
+
 @api_bp.route("/dashboard", methods=["GET"])
 def get_dashboard() -> Any:
-    leaves = LeaveRequest.query.all()
-    attendance = AttendanceRecord.query.all()
+    auth_user = resolve_authenticated_user()
+    if not auth_user:
+        return jsonify({"success": False, "message": "Unauthorized"}), 401
+
+    if is_owner(auth_user):
+        leaves = LeaveRequest.query.all()
+        attendance = AttendanceRecord.query.all()
+    else:
+        # Assuming we eventually map User to Employee, for now just show all for simplicity or user specific
+        leaves = LeaveRequest.query.all()
+        attendance = AttendanceRecord.query.all()
+        
     return jsonify(
         {
             "leave_count": len(leaves),
             "attendance_count": len(attendance),
+            "role": auth_user.role,
+            "username": auth_user.username
         }
     )
+
+
+@api_bp.route("/analytics", methods=["GET"])
+def get_analytics() -> Any:
+    # Gather metrics for the dashboard
+    total_employees = Employee.query.count()
+    pending_leaves = LeaveRequest.query.filter_by(status="Pending").count()
+    open_tickets = HRTicket.query.filter_by(status="Pending").count()
+    pending_expenses = ExpenseReimbursement.query.filter_by(status="Pending").count()
+
+    return jsonify(
+        {
+            "total_employees": total_employees,
+            "pending_leaves": pending_leaves,
+            "open_tickets": open_tickets,
+            "pending_expenses": pending_expenses,
+        }
+    )
+
+
+def resolve_employee_id(emp_val: Any) -> int:
+    """Helper to safely convert 'EMP-XXX', '101', or 1 to the integer employee.id."""
+    if not emp_val:
+        return 1
+    if isinstance(emp_val, int):
+        return emp_val
+    emp_str = str(emp_val).strip()
+    
+    # Check if it matches an actual employee_id_string
+    emp = Employee.query.filter_by(employee_id_string=emp_str).first()
+    if emp:
+        return emp.id
+        
+    if emp_str.startswith("EMP-"):
+        # fallback parsing just in case
+        try:
+            return int(emp_str.replace("EMP-", ""))
+        except ValueError:
+            return 1
+    if emp_str.isdigit():
+        return int(emp_str)
+    return 1
 
 
 @api_bp.route("/sync-attendance", methods=["POST"])
 def sync_attendance() -> Any:
     data = request.json or {}
-    employee_id = data.get("employee_id")
+    employee_id_raw = data.get("employee_id") or data.get("employee")
     date_str = data.get("date")
-    if not employee_id or not date_str:
+    if not employee_id_raw or not date_str:
         return jsonify({"error": "Missing employee_id or date"}), 400
     try:
         record_date = datetime.strptime(date_str, "%Y-%m-%d").date()
     except ValueError:
         return jsonify({"error": "Invalid date format"}), 400
 
-    record = AttendanceRecord(employee_id=employee_id, date=record_date)
+    emp_id_int = resolve_employee_id(employee_id_raw)
+    record = AttendanceRecord(employee_id=emp_id_int, date=record_date)
     db.session.add(record)
     db.session.commit()
     return jsonify({"message": "Attendance synced successfully"})
@@ -121,7 +223,10 @@ def ask_policy() -> Any:
 
         llm = get_llm()
         if llm is None:
-            answer = "I cannot find the answer in the policy."
+            if context_chunks:
+                answer = context_chunks[0].strip()
+            else:
+                answer = "I cannot find the answer in the policy."
         else:
             response = llm(prompt, max_tokens=220, temperature=0.0)
             try:
@@ -149,7 +254,7 @@ def verify_attendance() -> Any:
     if not verify_face(image_file, employee_id):
         return jsonify({"error": "Face verification failed or no face detected"}), 400
 
-    emp_id_int = int(employee_id) if employee_id.isdigit() else 1
+    emp_id_int = resolve_employee_id(employee_id)
     record = AttendanceRecord(
         employee_id=emp_id_int, date=datetime.utcnow().date(), verified_by="biometric"
     )
@@ -162,7 +267,8 @@ def verify_attendance() -> Any:
 def submit_leave() -> Any:
     data = request.json or {}
     unstructured_text = data.get("raw_text", "")
-    employee_id = data.get("employee_id", 1)
+    employee_id_raw = data.get("employee_id") or data.get("employee")
+    emp_id_int = resolve_employee_id(employee_id_raw)
 
     if not unstructured_text:
         return jsonify({"error": "No raw_text provided"}), 400
@@ -178,7 +284,7 @@ def submit_leave() -> Any:
 
     reason = extracted_data.get("reason", "")
     leave_req = LeaveRequest(
-        employee_id=employee_id, start_date=start_date, end_date=end_date, reason_raw_text=reason
+        employee_id=emp_id_int, start_date=start_date, end_date=end_date, reason_raw_text=reason
     )
     db.session.add(leave_req)
     db.session.commit()
@@ -191,7 +297,8 @@ def submit_audio_leave() -> Any:
         return jsonify({"error": "No audio file provided"}), 400
 
     audio_file = request.files["audio"]
-    employee_id = request.form.get("employee_id", 1)
+    employee_id_raw = request.form.get("employee_id", "")
+    emp_id_int = resolve_employee_id(employee_id_raw)
 
     temp_dir = tempfile.gettempdir()
     temp_path = os.path.join(temp_dir, audio_file.filename or "temp_audio.wav")
@@ -208,14 +315,14 @@ def submit_audio_leave() -> Any:
             start_date = datetime.utcnow().date()
             end_date = datetime.utcnow().date()
 
-        reason = extracted_data.get("reason", "")
-        leave_req = LeaveRequest(
-            employee_id=employee_id,
+        record = LeaveRequest(
+            employee_id=emp_id_int,
             start_date=start_date,
             end_date=end_date,
-            reason_raw_text=reason,
+            leave_type=extracted_data.get("leave_type", "General"),
+            reason_raw_text=transcribed_text,
         )
-        db.session.add(leave_req)
+        db.session.add(record)
         db.session.commit()
         return jsonify(
             {
@@ -235,7 +342,8 @@ def submit_receipt() -> Any:
         return jsonify({"error": "No receipt image provided"}), 400
 
     receipt_file = request.files["receipt"]
-    employee_id = request.form.get("employee_id", "").strip()
+    employee_id_raw = request.form.get("employee_id", "").strip()
+    emp_id_int = resolve_employee_id(employee_id_raw)
 
     temp_file = tempfile.NamedTemporaryFile(suffix=".png", delete=False)
     temp_path = temp_file.name
@@ -247,7 +355,7 @@ def submit_receipt() -> Any:
         structured_data = process_expense_with_llm(raw_text)
 
         expense = ExpenseReimbursement(
-            employee_id=int(employee_id) if employee_id.isdigit() else None,
+            employee_id=emp_id_int,
             vendor=structured_data.get("vendor", "Unknown"),
             date=structured_data.get("date", ""),
             amount=structured_data.get("amount", "0.00"),
@@ -371,22 +479,22 @@ def upload_resume() -> Any:
 def submit_hr_ticket() -> Any:
     data = request.json or {}
     unstructured_text = data.get("raw_text", "")
-    employee_id = data.get("employee_id", 1)
+    employee_id_raw = data.get("employee_id") or data.get("employee")
+    emp_id_int = resolve_employee_id(employee_id_raw)
 
     if not unstructured_text:
         return jsonify({"error": "No raw_text provided"}), 400
 
     extracted_data = parse_hr_ticket(unstructured_text)
-    ticket = HRTicket(
-        employee_id=employee_id,
-        original_language=extracted_data.get("original_language", "unknown"),
-        category=extracted_data.get("category", "other"),
-        english_summary=extracted_data.get("english_summary", "Unknown issue"),
-        status="Pending",
+    record = HRTicket(
+        employee_id=emp_id_int,
+        original_language=extracted_data.get("language", "en"),
+        category=extracted_data.get("category", "General"),
+        english_summary=extracted_data.get("english_summary", unstructured_text),
     )
-    db.session.add(ticket)
+    db.session.add(record)
     db.session.commit()
-    return jsonify({"status": "success", "ticket_id": ticket.id, "extracted_data": extracted_data})
+    return jsonify({"status": "success", "ticket_id": record.id, "extracted_data": extracted_data})
 
 
 @api_bp.route("/pending-users", methods=["GET"])
@@ -407,16 +515,37 @@ def approve_user() -> Any:
 
     payload = get_request_data()
     username = (payload.get("username") or "").strip()
-    if not username:
-        return jsonify({"success": False, "message": "Username is required."}), 400
+    user_id = payload.get("user_id")
 
-    user = User.query.filter_by(username=username).first()
+    if user_id:
+        user = User.query.get(user_id)
+    elif username:
+        user = User.query.filter_by(username=username).first()
+    else:
+        return jsonify({"success": False, "message": "Username or user_id is required."}), 400
+
     if not user:
         return jsonify({"success": False, "message": "User not found."}), 404
 
-    user.status = "Active"
+    if user.status != "Active":
+        user.status = "Active"
+        
+        # Create Employee record so they appear in Directory
+        import random
+        emp_id_string = f"EMP-{random.randint(1000, 9999)}"
+        emp = Employee(
+            employee_id_string=emp_id_string,
+            full_name=user.username,
+            department=user.stream or "General",
+            role=user.role,
+            username=user.username,
+            status="Active",
+            stream=user.stream
+        )
+        db.session.add(emp)
+
     db.session.commit()
-    return jsonify({"success": True, "message": "User approved.", "user": user.to_dict()})
+    return jsonify({"success": True, "message": "User approved and added to Directory.", "user": user.to_dict()})
 
 
 @api_bp.route("/delegate-owner", methods=["POST"])
@@ -427,10 +556,21 @@ def delegate_owner() -> Any:
 
     payload = get_request_data()
     username = (payload.get("username") or "").strip()
-    if not username:
-        return jsonify({"success": False, "message": "Username is required."}), 400
+    user_id = payload.get("user_id")
 
-    user = User.query.filter_by(username=username).first()
+    if user_id:
+        # App sends Employee ID for delegation right now. Let's find Employee then User.
+        emp = Employee.query.get(user_id)
+        if emp and emp.username:
+            user = User.query.filter_by(username=emp.username).first()
+        else:
+            # Fallback in case it was sending actual User ID
+            user = User.query.get(user_id)
+    elif username:
+        user = User.query.filter_by(username=username).first()
+    else:
+        return jsonify({"success": False, "message": "Username or user_id is required."}), 400
+
     if not user:
         return jsonify({"success": False, "message": "User not found."}), 404
 

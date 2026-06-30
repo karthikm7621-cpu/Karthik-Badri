@@ -1,15 +1,37 @@
 (() => {
   const queue = window.OfflineQueue;
-  const employees = [
-    { id: 'EMP-101', name: 'Ari Chen' },
-    { id: 'EMP-102', name: 'Mina Patel' },
-    { id: 'EMP-103', name: 'Jules Ortiz' },
-  ];
+  let employees = [];
 
-  // Auth UI removed
+  async function fetchEmployees() {
+    try {
+      if (navigator.onLine) {
+        const res = await fetch('/api/employees');
+        if (res.ok) {
+          const data = await res.json();
+          employees = data.map((e) => ({ id: e.employee_id_string, name: e.full_name }));
+          renderEmployees();
+        }
+      }
+    } catch (_err) {}
+  }
+
+  async function fetchAnalytics() {
+    try {
+      if (navigator.onLine) {
+        const res = await fetch('/api/analytics');
+        if (res.ok) {
+          const data = await res.json();
+          document.getElementById('stat-employees').textContent = data.total_employees;
+          document.getElementById('stat-leaves').textContent = data.pending_leaves;
+          document.getElementById('stat-expenses').textContent = data.pending_expenses;
+          document.getElementById('stat-tickets').textContent = data.open_tickets;
+        }
+      }
+    } catch (_err) {}
+  }
 
   // Admin UI
-  const adminPanel = document.getElementById('admin-panel');
+  const _adminPanel = document.getElementById('admin-panel');
   const pendingUsersList = document.getElementById('pending-users-list');
   const delegationContainer = document.getElementById('delegation-container');
   const delegateForm = document.getElementById('delegate-form');
@@ -70,7 +92,7 @@
 
   // State
   let currentUserRole = null;
-  let currentUsername = null;
+  let _currentUsername = null;
   let currentReceiptBlob = null;
   let currentReceiptPreviewUrl = null;
 
@@ -136,11 +158,17 @@
   }
 
   async function sendPayload(endpoint, payload) {
+    const headers = {
+      'Content-Type': 'application/json',
+    };
+    const token = localStorage.getItem('ems_token');
+    if (token) {
+      headers.Authorization = `Bearer ${token}`;
+    }
+
     const response = await fetch(`/api/${endpoint}`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers,
       body: JSON.stringify(payload),
     });
 
@@ -152,23 +180,56 @@
     return response.json();
   }
 
+  // View Switching Logic
+  const navBtns = document.querySelectorAll('.nav-btn');
+  const viewSections = document.querySelectorAll('.view-section');
+  const pageTitle = document.getElementById('page-title');
+
+  function switchView(targetId, titleText) {
+    viewSections.forEach((sec) => {
+      sec.classList.remove('active');
+    });
+    document.getElementById(targetId).classList.add('active');
+
+    navBtns.forEach((btn) => {
+      btn.classList.remove('active');
+    });
+    const activeBtn = document.querySelector(`.nav-btn[data-target="${targetId}"]`);
+    if (activeBtn) {
+      activeBtn.classList.add('active');
+    }
+
+    if (pageTitle && titleText) {
+      pageTitle.textContent = titleText;
+    }
+  }
+
+  navBtns.forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const targetId = btn.getAttribute('data-target');
+      const titleText = btn.querySelector('span').textContent;
+      switchView(targetId, titleText);
+    });
+  });
+
   // Auth Logic
   function checkAuth() {
-    currentUsername = 'Anonymous';
+    _currentUsername = 'Anonymous';
     currentUserRole = 'Main Owner';
     showDashboard();
   }
 
   function showDashboard() {
-    const dashboardView = document.getElementById('dashboard-view');
-    if (dashboardView) {
-      dashboardView.classList.remove('hidden');
-    }
-
-    renderEmployees();
+    fetchEmployees().then(() => {
+      // Employees fetched and rendered
+    });
+    fetchAnalytics();
 
     if (currentUserRole === 'Main Owner' || currentUserRole === 'Delegated Owner') {
-      adminPanel.classList.remove('hidden');
+      const navAdmin = document.getElementById('nav-admin');
+      if (navAdmin) {
+        navAdmin.classList.remove('hidden');
+      }
       void loadAdminData();
 
       if (currentUserRole === 'Main Owner') {
@@ -177,11 +238,12 @@
         delegationContainer.classList.add('hidden');
       }
     } else {
-      adminPanel.classList.add('hidden');
+      const navAdmin = document.getElementById('nav-admin');
+      if (navAdmin) {
+        navAdmin.classList.add('hidden');
+      }
     }
   }
-
-  // Auth Logic Removed
 
   // Admin Logic
   async function loadAdminData() {
@@ -219,17 +281,67 @@
               await sendPayload('approve-user', { user_id: userId });
               e.target.textContent = 'Approved';
               e.target.disabled = true;
-            } catch (err) {
-              console.warn('Failed to approve user', err);
-            }
+
+              // Instantly refresh the employee dropdowns and analytics across the site
+              await fetchEmployees();
+              await fetchAnalytics();
+            } catch (_err) {}
           });
         });
       }
-    } catch (err) {
-      console.warn('Could not load pending users', err);
-    }
+    } catch (_err) {}
   }
 
+  // Join Team Logic
+  const joinModal = document.getElementById('join-modal');
+  const joinBtn = document.getElementById('join-team-btn');
+  const joinCancelBtn = document.getElementById('join-cancel-btn');
+  const joinForm = document.getElementById('join-form');
+  const joinFeedback = document.getElementById('join-feedback');
+
+  if (joinBtn) {
+    joinBtn.addEventListener('click', () => {
+      joinModal.classList.remove('hidden');
+    });
+  }
+  if (joinCancelBtn) {
+    joinCancelBtn.addEventListener('click', () => {
+      joinModal.classList.add('hidden');
+    });
+  }
+
+  if (joinForm) {
+    joinForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const payload = {
+        username: document.getElementById('join-name').value.trim(),
+        department: document.getElementById('join-department').value.trim(),
+        role: document.getElementById('join-role').value,
+      };
+      try {
+        const res = await fetch('/api/request-join', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+        const data = await res.json();
+        if (data.success) {
+          joinFeedback.textContent = data.message;
+          joinFeedback.className = 'feedback success';
+          setTimeout(() => joinModal.classList.add('hidden'), 2000);
+          joinForm.reset();
+        } else {
+          joinFeedback.textContent = data.message || 'Request failed';
+          joinFeedback.className = 'feedback error';
+        }
+      } catch (_err) {
+        joinFeedback.textContent = 'Network error. Try again.';
+        joinFeedback.className = 'feedback error';
+      }
+    });
+  }
+
+  // Dashboard logic
   async function handleDelegation(event) {
     event.preventDefault();
     if (!navigator.onLine) {
@@ -242,9 +354,8 @@
       await sendPayload('delegate-owner', { user_id: targetUserId });
       setFeedback(delegateFeedback, 'Delegation successful.', 'success');
       delegateForm.reset();
-    } catch (err) {
+    } catch (_err) {
       setFeedback(delegateFeedback, 'Delegation failed.', 'info');
-      console.warn(err);
     }
   }
 
@@ -252,7 +363,7 @@
   async function handleAttendanceSubmission(event) {
     event.preventDefault();
     const payload = {
-      employee: attendanceEmployee.value,
+      employee_id: attendanceEmployee.value,
       date: attendanceDate.value,
       notes: document.getElementById('attendance-notes').value.trim(),
     };
@@ -265,7 +376,7 @@
       setFeedback(attendanceFeedback, 'Attendance saved successfully.', 'success');
       attendanceForm.reset();
       attendanceDate.value = new Date().toISOString().slice(0, 10);
-    } catch (error) {
+    } catch (_error) {
       if (queue && typeof queue.addToQueue === 'function') {
         await queue.addToQueue('sync-attendance', payload);
       }
@@ -292,7 +403,7 @@
       await sendPayload('submit-leave', payload);
       setFeedback(leaveFeedback, 'Leave request queued for review.', 'success');
       leaveForm.reset();
-    } catch (error) {
+    } catch (_error) {
       if (queue && typeof queue.addToQueue === 'function') {
         await queue.addToQueue('submit-leave', payload);
       }
@@ -329,7 +440,7 @@
 
       const data = await response.json();
       appendPolicyMessage(data.answer || 'I cannot find the answer in the policy.', 'bot');
-    } catch (error) {
+    } catch (_error) {
       if (queue && typeof queue.addToQueue === 'function') {
         await queue.addToQueue('ask-policy', payload);
       }
@@ -387,8 +498,7 @@
       receiptPreview.src = currentReceiptPreviewUrl;
       receiptPreview.classList.remove('hidden');
       setFeedback(receiptFeedback, 'Receipt ready. Submit when connected or offline.', 'info');
-    } catch (error) {
-      console.warn('Receipt preview failed', error);
+    } catch (_error) {
       setFeedback(receiptFeedback, 'Could not prepare the receipt image.', 'info');
     }
   }
@@ -407,7 +517,17 @@
       if (!navigator.onLine) {
         throw new Error('offline');
       }
-      const response = await fetch('/api/submit-receipt', { method: 'POST', body: formData });
+      const token = localStorage.getItem('ems_token');
+      const headers = {};
+      if (token) {
+        headers.Authorization = `Bearer ${token}`;
+      }
+
+      const response = await fetch('/api/submit-receipt', {
+        method: 'POST',
+        headers,
+        body: formData,
+      });
       if (!response.ok) {
         throw new Error('Request failed');
       }
@@ -416,7 +536,7 @@
       receiptPreview.classList.add('hidden');
       receiptFileInput.value = '';
       currentReceiptBlob = null;
-    } catch (error) {
+    } catch (_error) {
       if (queue && typeof queue.addToQueue === 'function') {
         await queue.addToQueue(
           'submit-receipt',
@@ -459,14 +579,24 @@
         throw new Error('offline');
       }
 
-      const response = await fetch('/api/upload-resume', { method: 'POST', body: formData });
+      const token = localStorage.getItem('ems_token');
+      const headers = {};
+      if (token) {
+        headers.Authorization = `Bearer ${token}`;
+      }
+
+      const response = await fetch('/api/upload-resume', {
+        method: 'POST',
+        headers,
+        body: formData,
+      });
       if (!response.ok) {
         throw new Error('Request failed');
       }
 
       setFeedback(resumeFeedback, 'Resume processed successfully.', 'success');
       resumeForm.reset();
-    } catch (err) {
+    } catch (_err) {
       // fallback: queue the FormData payload for later sync via IndexedDB
       try {
         if (queue && typeof queue.addToQueue === 'function') {
@@ -485,8 +615,7 @@
         } else {
           setFeedback(resumeFeedback, 'Unable to queue offline — no queue available.', 'info');
         }
-      } catch (qerr) {
-        console.warn('Failed to queue resume', qerr);
+      } catch (_qerr) {
         setFeedback(resumeFeedback, 'Failed to process or queue resume.', 'info');
       }
     } finally {
@@ -509,7 +638,7 @@
       await sendPayload('submit-hr-ticket', payload);
       setFeedback(hrFeedback, 'Ticket submitted successfully.', 'success');
       hrForm.reset();
-    } catch (error) {
+    } catch (_error) {
       if (queue && typeof queue.addToQueue === 'function') {
         await queue.addToQueue('submit-hr-ticket', payload);
       }
@@ -540,21 +669,22 @@
       biometricContainer.classList.remove('hidden');
       startBiometricBtn.classList.add('hidden');
       setFeedback(attendanceFeedback, 'Please look into the camera.', 'info');
-    } catch (err) {
+    } catch (_err) {
       setFeedback(attendanceFeedback, 'Webcam access denied or unavailable.', 'info');
-      console.warn('Webcam error:', err);
     }
   }
 
   function stopWebcam() {
     if (webcamStream) {
-      webcamStream.getTracks().forEach((track) => track.stop());
+      webcamStream.getTracks().forEach((track) => {
+        track.stop();
+      });
       webcamStream = null;
     }
     webcamVideo.srcObject = null;
   }
 
-  async function captureAndVerifyFace() {
+  function captureAndVerifyFace() {
     if (!webcamStream) {
       return;
     }
@@ -585,8 +715,15 @@
           if (!navigator.onLine) {
             throw new Error('offline');
           }
+          const token = localStorage.getItem('ems_token');
+          const headers = {};
+          if (token) {
+            headers.Authorization = `Bearer ${token}`;
+          }
+
           const response = await fetch('/api/verify-attendance', {
             method: 'POST',
+            headers,
             body: formData,
           });
 
@@ -615,9 +752,8 @@
   }
 
   // Audio Logic
-  async function initAudioRecorder() {
+  function initAudioRecorder() {
     if (!navigator.mediaDevices?.getUserMedia) {
-      console.warn('Media devices API not supported.');
       return;
     }
 
@@ -639,14 +775,15 @@
           audioPlayback.src = audioUrl;
           audioPlayback.classList.remove('hidden');
           submitAudioBtn.classList.remove('hidden');
-          stream.getTracks().forEach((track) => track.stop());
+          stream.getTracks().forEach((track) => {
+            track.stop();
+          });
         });
 
         mediaRecorder.start();
         recordingIndicator.classList.remove('hidden');
-      } catch (err) {
+      } catch (_err) {
         setFeedback(leaveFeedback, 'Microphone access denied or error.', 'info');
-        console.warn(err);
       }
     });
 
@@ -680,7 +817,17 @@
         formData.append('employee_id', payload.employee_id);
         formData.append('audio', payload.audio, 'audio.webm');
 
-        const response = await fetch('/api/submit-audio-leave', { method: 'POST', body: formData });
+        const token = localStorage.getItem('ems_token');
+        const headers = {};
+        if (token) {
+          headers.Authorization = `Bearer ${token}`;
+        }
+
+        const response = await fetch('/api/submit-audio-leave', {
+          method: 'POST',
+          headers,
+          body: formData,
+        });
         if (!response.ok) {
           throw new Error('Request failed');
         }
@@ -689,7 +836,7 @@
         currentAudioBlob = null;
         audioPlayback.classList.add('hidden');
         submitAudioBtn.classList.add('hidden');
-      } catch (error) {
+      } catch (_error) {
         if (queue && typeof queue.addToQueue === 'function') {
           await queue.addToQueue('submit-audio-leave', payload, true);
         }
@@ -748,9 +895,7 @@
     if ('serviceWorker' in navigator) {
       try {
         await navigator.serviceWorker.register('/static/service-worker.js');
-      } catch (error) {
-        console.warn('SW failed', error);
-      }
+      } catch (_error) {}
     }
 
     checkAuth();
