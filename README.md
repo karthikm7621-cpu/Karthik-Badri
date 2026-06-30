@@ -30,14 +30,15 @@ graph TD;
 
 ## 🚀 Quick Start
 
-### 1. Using Docker (Recommended)
-```bash
-docker build -t data-processor .
-docker run -p 8000:8000 --env-file .env.example data-processor
-```
-Visit `http://localhost:8000`.
+### 1. Using Docker Compose (Recommended)
+This project is orchestrated using Docker Compose, combining the main backend, data-processor, and an Nginx reverse proxy into a single environment.
 
-### 2. Manual Installation
+```bash
+docker-compose up -d --build
+```
+Visit `http://localhost`.
+
+### 2. Manual Installation (Backend Only)
 ```bash
 python -m venv venv
 source venv/bin/activate

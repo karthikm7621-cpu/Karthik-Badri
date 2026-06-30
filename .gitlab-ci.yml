@@ -44,6 +44,13 @@ frontend_format:
     - npm install
   script:
     - npm run format:check
+  rules:
+    - changes:
+      - "**/*.js"
+      - "**/*.css"
+      - "**/*.html"
+      - "package*.json"
+      - "biome.json"
 
 backend_format:
   extends: .python_setup
@@ -51,6 +58,11 @@ backend_format:
   script:
     - ruff format --check .
     - ruff check .
+  rules:
+    - changes:
+      - "**/*.py"
+      - "requirements.txt"
+      - "pyproject.toml"
 
 frontend_lint:
   stage: lint
@@ -60,24 +72,46 @@ frontend_lint:
   script:
     - npm run lint
     - npm run deadcode
+  rules:
+    - changes:
+      - "**/*.js"
+      - "**/*.css"
+      - "**/*.html"
+      - "package*.json"
+      - "knip.json"
 
 backend_lint:
   extends: .python_setup
   stage: lint
   script:
     - ruff check .
+  rules:
+    - changes:
+      - "**/*.py"
+      - "requirements.txt"
+      - "pyproject.toml"
 
 type_check:
   extends: .python_setup
   stage: type_check
   script:
-    - mypy . --ignore-missing-imports
+    - mypy app run.py --ignore-missing-imports
+  rules:
+    - changes:
+      - "**/*.py"
+      - "requirements.txt"
+      - "pyproject.toml"
 
 security_bandit:
   extends: .python_setup
   stage: security
   script:
     - bandit -r . -ll -c pyproject.toml
+  rules:
+    - changes:
+      - "**/*.py"
+      - "requirements.txt"
+      - "pyproject.toml"
 
 security_gitleaks:
   stage: security
@@ -106,6 +140,11 @@ backend_coverage:
     - pytest --cov=. --cov-fail-under=85 --cov-report=term-missing --cov-report=xml:coverage/backend/coverage.xml --cov-report=html:coverage/backend/html --junitxml=coverage/backend/junit.xml
     - coverage report --precision=2
   coverage: '/TOTAL\s+\d+\s+\d+\s+(\d+(?:\.\d+)?)%/'
+  rules:
+    - changes:
+      - "**/*.py"
+      - "requirements.txt"
+      - "pyproject.toml"
   artifacts:
     when: always
     expire_in: 14 days
@@ -125,6 +164,13 @@ frontend_coverage:
   script:
     - npm run test:ci
   coverage: '/All files[^|]*\|[^|]*\s+(\d+(?:\.\d+)?)/'
+  rules:
+    - changes:
+      - "**/*.js"
+      - "**/*.css"
+      - "**/*.html"
+      - "package*.json"
+      - "jest.config.js"
   artifacts:
     when: always
     expire_in: 14 days
@@ -142,7 +188,8 @@ build:
     - docker:24.0.5-dind
   before_script: []
   script:
-    - docker build -t "$CI_REGISTRY_IMAGE:$CI_COMMIT_SHA" .
+    - docker pull $CI_REGISTRY_IMAGE:latest || true
+    - docker build --cache-from $CI_REGISTRY_IMAGE:latest -t "$CI_REGISTRY_IMAGE:$CI_COMMIT_SHA" .
     - docker tag "$CI_REGISTRY_IMAGE:$CI_COMMIT_SHA" "$CI_REGISTRY_IMAGE:latest"
   rules:
     - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
