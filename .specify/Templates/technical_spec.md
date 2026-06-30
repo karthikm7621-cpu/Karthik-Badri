@@ -1,30 +1,24 @@
-# Technical Design Document: [System/Component Name]
+# Technical Design Document: [Architecture Change] 🏗️
 
-**Author:** [Your Name]
-**Status:** [Draft | Under Review | Approved | Implemented]
-**Target Milestone:** [e.g., Backend Refactor Phase 2]
+**Author:** [Name] | **Milestone:** [Target Version] | **Status:** [Draft | Approved]
 
-## 1. Architectural Overview
-Provide a high-level summary of the backend system or architectural change. (Mermaid diagrams recommended).
+## 1. System Architecture & Boundaries
+- **Objective:** What structural problem does this solve?
+- **Component Diagram:** (Mermaid.js block required detailing data flow between the Client, Flask Gateway, Service Layer, and Database).
 
-## 2. Database Schema Impact
-Detail all modifications to the data layer.
-- **New Tables / Modified Tables:**
-- **Columns & Data Types:**
-- **Indexes & Foreign Keys:**
-- **Migration Strategy:** How will existing data be handled?
+## 2. Data Persistence & Schema Evolution
+- **Migration Strategy:** 
+  - Forward migration steps (e.g., `alembic upgrade head`).
+  - Rollback/downgrade steps (MANDATORY for CI/CD failure recovery).
+- **Schema Changes:**
+  - Table definitions, indexes, and constraints.
+- **Caching Strategy:** Does this data need to be cached in Redis? What is the TTL?
 
-## 3. Flask Blueprint Design
-- **Blueprint Name:** `[blueprint_name]`
-- **Modules Involved:** Which files will be created or modified (e.g., `routes.py`, `models.py`, `services.py`)?
-- **Business Logic Placement:** Where will the core processing logic reside (avoiding fat controllers)?
+## 3. Security, Scale & Pipeline Impact (CI/CD Gates)
+- **Threat Model:** Identify potential attack vectors (e.g., DDoS, SQLi, IDOR) and their mitigations.
+- **Performance Budget:** What is the maximum acceptable latency for this subsystem (e.g., p95 < 200ms)?
+- **Infrastructure as Code (IaC):** Does this require changes to Dockerfiles, Kubernetes manifests, or `.gitlab-ci.yml`?
 
-## 4. Security & Validation Considerations
-- **Authentication/Authorization:** Who can access these changes?
-- **Input Sanitization:** How are we mitigating SQL injection, XSS, and payload attacks?
-- **Rate Limiting:** Is this endpoint vulnerable to abuse?
-
-## 5. Testing Criteria
-- **Unit Testing:** Which specific service functions and utilities require unit tests?
-- **Integration Testing:** Which API endpoints must be tested end-to-end?
-- **Edge Cases:** What are the known failure states that must be tested?
+## 4. Observability & Telemetry
+- **Structured Logging:** What events will be logged, and what context (user_id, correlation_id) will be attached?
+- **Metrics/Alerting:** What Prometheus metrics or Grafana alerts need to be configured for this feature?

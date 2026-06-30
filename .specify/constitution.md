@@ -1,27 +1,41 @@
-# Team ATK Engineering Constitution
+# Team ATK Engineering & Automation Constitution 🛡️
 
-This constitution defines the strict engineering standards for our Spec-Driven Development (SDD) workflow. All code merged into this repository must adhere to these rules.
+**Authored by:** Core Architecture, AI Automation, and DevOps Guilds
 
-## 1. Frontend: Vanilla JavaScript & DOM Management
-- **No Global Scope Pollution:** All JavaScript must be encapsulated within ES6 modules or IIFEs. Do not attach variables to the `window` object unless absolutely necessary for external integrations.
-- **Strict Modularity:** Separate concerns strictly. Create distinct modules for State Management, API Services, and DOM UI components.
-- **DOM Manipulation:** Cache DOM queries. Avoid direct inline styles; toggle CSS classes instead. Ensure all interactive elements have semantic HTML and ARIA labels.
-- **Event Listeners:** Attach event listeners dynamically on module initialization and ensure they are removed when elements are destroyed to prevent memory leaks.
+This constitution enforces non-negotiable standards across our AI-assisted development, core software engineering, and continuous delivery pipelines. All human and autonomous agent contributors MUST adhere to this document.
 
-## 2. Backend: Python/Flask Structure
-- **Blueprint Architecture:** Do not declare all routes in a single `app.py`. Use Flask Blueprints to logically group related routes and business logic (e.g., `auth`, `employees`, `attendance`).
-- **API Response Formatting:** All API endpoints must return a standardized JSON response envelope:
-  ```json
-  {
-    "status": "success | error",
-    "data": { ... },
-    "message": "Optional human-readable message"
-  }
-  ```
-- **Error Handling:** Centralize error handling using `@app.errorhandler`. Never leak stack traces to the client in production.
-- **Validation:** Validate all incoming requests and payloads before processing business logic. Use appropriate HTTP status codes (e.g., 400 for Bad Request, 401 for Unauthorized).
+---
 
-## 3. Version Control & SDD Workflow
-- **Spec-Driven Requirement:** No feature branch can be created without a fully approved specification (`.specify/Templates/feature_spec.md` or `technical_spec.md`).
-- **Commit Standards:** Use Conventional Commits strictly (`feat:`, `fix:`, `chore:`, `docs:`, `refactor:`).
-- **Pull Requests:** PRs must link to their corresponding specification document. PRs require a peer review and passing CI pipelines to be eligible for merging. Main branch merges occur only via Pull Request.
+## 1. 🧠 AI Prompt Engineering & Automation Standards
+*As mandated by the Principal Prompt Engineer*
+
+- **System Prompt Integrity:** All AI agents contributing to this repository must operate strictly under the context of this constitution.
+- **Spec-to-Code Traceability:** Agents must generate code that explicitly references the corresponding `feature_spec.md` or `technical_spec.md` in commit messages and PR descriptions.
+- **Zero-Hallucination Policy:** AI-generated code must exclusively use the approved tech stack (Vanilla JS, Flask, HTML/CSS). No unauthorized third-party libraries may be imported without explicit architectural approval.
+- **Self-Correction Loop:** Agents must run local linters and unit tests (where configured) before proposing a commit.
+
+## 2. 💻 Software Engineering Standards
+*As mandated by the Principal Software Developer*
+
+### Backend (Python/Flask)
+- **Hexagonal Architecture (Ports and Adapters):** Business logic must be decoupled from Flask routing. Flask routes (Adapters) must only parse requests, pass them to Service layers (Core), and format responses.
+- **Strict Typing:** All Python code must use `typing` and pass static analysis tools (e.g., `mypy --strict`).
+- **Stateless APIs:** All Flask endpoints must be perfectly stateless. Session data belongs in Redis or client-side tokens (JWT), never in local memory.
+- **Error Boundaries:** Use global exception handlers to capture, log (with correlation IDs), and sanitize errors before returning a standardized `{"status": "error", "error_code": "..."}` JSON payload to the client.
+
+### Frontend (Vanilla JS & UI)
+- **Component Lifecycle Management:** Vanilla JS modules must expose `mount(element)` and `unmount()` methods to prevent memory leaks and dangling event listeners.
+- **Offline-First State Machine:** Client-side state must be managed via a centralized store that syncs with IndexedDB. Network calls must be queued during offline states and automatically retried via Service Workers.
+- **Security Primitives:** DOM updates must use `textContent` or `DOMPurify` to mitigate XSS. Never use raw `innerHTML`.
+
+## 3. 🚀 CI/CD & Pipeline Standards
+*As mandated by the Principal Pipeline Specialist*
+
+- **Immutable Build Artifacts:** Docker images must be built once, tagged with the Git SHA, and promoted across environments (Staging -> Prod) without rebuilding.
+- **Shift-Left Security:** All PRs must pass automated SAST (Static Application Security Testing) and dependency vulnerability scans before the merge button is unlocked.
+- **Zero-Downtime Deployments:** The pipeline mandates Blue/Green or Canary deployment strategies. Health-check endpoints (`/api/health`) are strictly required.
+- **Merge Criteria:** 
+  1. 100% pass rate on unit/integration tests.
+  2. Test coverage must not decrease (enforced by SonarQube/Codecov).
+  3. Minimum one human approval.
+  4. Squashed commits following Conventional Commits (`type(scope): subject`).
