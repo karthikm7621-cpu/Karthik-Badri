@@ -1,4 +1,5 @@
 import logging
+import os
 from flask import Flask, jsonify, request, render_template
 
 # Configure standard Python logging
@@ -42,4 +43,4 @@ def process_data():
         return jsonify({"error": "Internal server error"}), 500
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=8000, debug=False)
+    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 8000)))
