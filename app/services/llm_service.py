@@ -12,7 +12,6 @@ RAG_INDEX: Optional[Any] = None
 RAG_CHUNKS: List[str] = []
 RAG_ERROR: Optional[str] = None
 
-
 def get_llm() -> Any:
     """Loads a lightweight local LLM via llama-cpp-python."""
     model_path = os.environ.get("LLM_MODEL_PATH", "./models/model.gguf")
@@ -24,6 +23,7 @@ def get_llm() -> Any:
     except ImportError:
         pass
     return None
+
 
 
 def chunk_text(text: str, chunk_size: int = 500, overlap: int = 80) -> List[str]:
@@ -43,6 +43,7 @@ def chunk_text(text: str, chunk_size: int = 500, overlap: int = 80) -> List[str]
             break
         start = max(0, end - overlap)
     return chunks
+
 
 
 def initialize_rag_index(file_path: Optional[str] = None) -> Tuple[Optional[Any], List[str]]:
@@ -121,18 +122,6 @@ def initialize_rag_index(file_path: Optional[str] = None) -> Tuple[Optional[Any]
         return None, chunks
 
 
-def transcribe_audio(file_path: str) -> str:
-    try:
-        import whisper
-
-        model = whisper.load_model("tiny.en", device="cpu")
-        result = model.transcribe(file_path)
-        return result["text"]
-    except ImportError:
-        return "Mocked transcription: User needs tomorrow off due to sickness."
-    except Exception as e:
-        return f"Transcription failed: {str(e)}"
-
 
 def process_leave_with_llm(raw_text: str) -> Dict[str, Any]:
     llm = get_llm()
@@ -163,65 +152,6 @@ def process_leave_with_llm(raw_text: str) -> Dict[str, Any]:
         }
 
 
-def get_ocr_reader() -> Any:
-    try:
-        from easyocr import Reader
-
-        return Reader(["en"], gpu=False)
-    except Exception:
-        return None
-
-
-def extract_text_from_image(image_path: str) -> str:
-    if not image_path or not os.path.exists(image_path):
-        return ""
-    try:
-        import onnxruntime as ort
-
-        providers = ort.get_available_providers()
-        if "CPUExecutionProvider" not in providers:
-            return ""
-    except Exception:
-        return ""
-    try:
-        from PIL import Image
-
-        with Image.open(image_path) as image:
-            image.convert("RGB").save(image_path)
-    except Exception:
-        pass
-    reader = get_ocr_reader()
-    if reader is None:
-        return ""
-    try:
-        results = reader.readtext(image_path, detail=0, paragraph=True)
-        return " ".join(part for part in results if part).strip()
-    except Exception:
-        return ""
-
-
-def extract_text_from_pdf(file_path: str) -> str:
-    if not file_path or not os.path.exists(file_path):
-        return ""
-    try:
-        import fitz
-    except Exception:
-        return ""
-    text_parts = []
-    try:
-        doc = fitz.open(file_path)
-        for page in doc:
-            try:
-                page_text = page.get_text()
-            except Exception:
-                page_text = ""
-            if page_text:
-                text_parts.append(page_text)
-        doc.close()
-    except Exception:
-        return ""
-    return "\n".join(part for part in text_parts if part).strip()
-
 
 def process_expense_with_llm(raw_text: str) -> Dict[str, Any]:
     llm = get_llm()
@@ -250,6 +180,7 @@ def process_expense_with_llm(raw_text: str) -> Dict[str, Any]:
             "amount": "0.00",
             "currency": "USD",
         }
+
 
 
 def parse_hr_ticket(raw_text: str) -> Dict[str, Any]:
@@ -283,58 +214,3 @@ def parse_hr_ticket(raw_text: str) -> Dict[str, Any]:
         }
 
 
-def verify_face(image_file: Any, employee_id: str) -> bool:
-    try:
-        import cv2
-        import face_recognition
-        import numpy as np
-    except ImportError:
-        return False
-    reference_path = os.path.join(
-        os.path.dirname(os.path.dirname(__file__)), "static", "profiles", f"{employee_id}.jpg"
-    )
-    if not os.path.exists(reference_path):
-        return False
-    try:
-        ref_image = face_recognition.load_image_file(reference_path)
-        ref_encodings = face_recognition.face_encodings(ref_image)
-        if not ref_encodings:
-            return False
-        file_bytes = np.frombuffer(image_file.read(), np.uint8)
-        frame_image = cv2.imdecode(file_bytes, cv2.IMREAD_COLOR)
-        if frame_image is None:
-            return False
-        rgb_frame = cv2.cvtColor(frame_image, cv2.COLOR_BGR2RGB)
-        frame_encodings = face_recognition.face_encodings(rgb_frame)
-        if not frame_encodings:
-            return False
-        distances = face_recognition.face_distance(ref_encodings, frame_encodings[0])
-        return len(distances) > 0 and distances[0] < 0.6
-    except Exception:
-        return False
-
-
-def get_request_data() -> Dict[str, Any]:
-    data = request.get_json(silent=True)
-    if isinstance(data, dict):
-        return data
-    return request.form.to_dict()
-
-
-def generate_auth_token(username: str) -> str:
-    s = URLSafeTimedSerializer(current_app.config.get('SECRET_KEY', 'dev-key-123'))
-    return s.dumps(username)
-
-def verify_auth_token(token: str) -> Optional[str]:
-    s = URLSafeTimedSerializer(current_app.config.get('SECRET_KEY', 'dev-key-123'))
-    try:
-        return s.loads(token, max_age=86400) # 24 hours
-    except Exception:
-        return None
-
-def resolve_authenticated_user() -> Any:
-    return User.query.filter_by(username="Owner1").first()
-
-
-def is_owner(user: Any) -> bool:
-    return user is not None and user.role in {"Main Owner", "Delegated Owner"}

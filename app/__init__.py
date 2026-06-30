@@ -28,9 +28,15 @@ def create_app(config_object=None):
     # Register blueprints
     from app.routes.main import main_bp
     from app.routes.api import api_bp
+    from app.routes.auth import auth_bp
+    from app.routes.hr import hr_bp
+    from app.routes.attendance import attendance_bp
 
     app.register_blueprint(main_bp)
     app.register_blueprint(api_bp)
+    app.register_blueprint(auth_bp)
+    app.register_blueprint(hr_bp)
+    app.register_blueprint(attendance_bp)
 
     import logging
     from flask import request
