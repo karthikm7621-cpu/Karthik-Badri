@@ -1,27 +1,27 @@
-# Engineering Constitution
+# Team ATK Engineering Constitution
 
-This document defines the core principles, decision-making frameworks, and non-negotiable architectural constraints for all software development in this repository. 
+This constitution defines the strict engineering standards for our Spec-Driven Development (SDD) workflow. All code merged into this repository must adhere to these rules.
 
-## 1. Core Principles
-- **Zero-Defect Culture:** Code must be rigorously tested before merging. We do not tolerate "broken windows."
-- **Security by Default:** All inputs are untrusted. Secrets must never be hardcoded. Dependencies must be pinned and scanned.
-- **Observability:** If it runs in production, it must emit logs, metrics, and traces.
-- **Simplicity:** Choose boring technology. Avoid clever code. Readability is prioritized over conciseness.
+## 1. Frontend: Vanilla JavaScript & DOM Management
+- **No Global Scope Pollution:** All JavaScript must be encapsulated within ES6 modules or IIFEs. Do not attach variables to the `window` object unless absolutely necessary for external integrations.
+- **Strict Modularity:** Separate concerns strictly. Create distinct modules for State Management, API Services, and DOM UI components.
+- **DOM Manipulation:** Cache DOM queries. Avoid direct inline styles; toggle CSS classes instead. Ensure all interactive elements have semantic HTML and ARIA labels.
+- **Event Listeners:** Attach event listeners dynamically on module initialization and ensure they are removed when elements are destroyed to prevent memory leaks.
 
-## 2. Decision-Making Framework (RFC Process)
-Major architectural changes must follow the Request for Comments (RFC) process:
-1. **Draft:** The author creates a `spec.md` detailing the problem and proposed solution.
-2. **Review:** The core team reviews the proposal asynchronously.
-3. **Consensus:** We strive for consensus. If consensus cannot be reached, the Principal Architect makes the final call.
-4. **Implementation:** Only approved specs move to the planning and execution phase.
+## 2. Backend: Python/Flask Structure
+- **Blueprint Architecture:** Do not declare all routes in a single `app.py`. Use Flask Blueprints to logically group related routes and business logic (e.g., `auth`, `employees`, `attendance`).
+- **API Response Formatting:** All API endpoints must return a standardized JSON response envelope:
+  ```json
+  {
+    "status": "success | error",
+    "data": { ... },
+    "message": "Optional human-readable message"
+  }
+  ```
+- **Error Handling:** Centralize error handling using `@app.errorhandler`. Never leak stack traces to the client in production.
+- **Validation:** Validate all incoming requests and payloads before processing business logic. Use appropriate HTTP status codes (e.g., 400 for Bad Request, 401 for Unauthorized).
 
-## 3. Architectural Constraints & Tech Stack
-- **Backend:** Python 3.11+, Flask for lightweight services. No async frameworks (e.g., FastAPI) unless specifically approved for high-concurrency websocket features.
-- **Frontend:** Vanilla JS/HTML/CSS for core tools. React/Next.js is only permitted for complex state-heavy client portals.
-- **Database:** PostgreSQL for relational data. SQLite is strictly for local dev or offline-first embedded scenarios.
-- **Containerization:** All services must be fully containerized. Dockerfiles must use multi-stage builds and run as non-root.
-
-## 4. Non-Negotiables
-- **CI/CD:** No code is merged to `main` without passing the CI pipeline (Linting, Types, Security, Tests).
-- **Code Reviews:** Every PR requires at least one approval from a designated code owner.
-- **Test Coverage:** Global test coverage must not drop below 85%. New features require 100% test coverage on the critical path.
+## 3. Version Control & SDD Workflow
+- **Spec-Driven Requirement:** No feature branch can be created without a fully approved specification (`.specify/Templates/feature_spec.md` or `technical_spec.md`).
+- **Commit Standards:** Use Conventional Commits strictly (`feat:`, `fix:`, `chore:`, `docs:`, `refactor:`).
+- **Pull Requests:** PRs must link to their corresponding specification document. PRs require a peer review and passing CI pipelines to be eligible for merging. Main branch merges occur only via Pull Request.
