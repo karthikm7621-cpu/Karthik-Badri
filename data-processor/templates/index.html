@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Data Processor - Production Web Application</title>
+    <!-- Use Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Header -->
+        <header class="app-header">
+            <div class="logo">
+                <div class="logo-icon"></div>
+                <h1>DataProcessor<span>.io</span></h1>
+            </div>
+            <div class="status-badge online">System Online</div>
+        </header>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <div class="card input-card">
+                <div class="card-header">
+                    <h2>Input Payload</h2>
+                    <p>Enter your JSON data payload below to process.</p>
+                </div>
+                <form id="data-form">
+                    <div class="field">
+                        <textarea id="json-input" placeholder='{&#10;  "sample_key": "sample_value",&#10;  "metrics": [1, 2, 3]&#10;}' spellcheck="false"></textarea>
+                    </div>
+                    <button type="submit" id="submit-btn">
+                        <span class="btn-text">Process Data</span>
+                        <div class="spinner hidden"></div>
+                    </button>
+                    <div id="feedback-message" class="feedback"></div>
+                </form>
+            </div>
+
+            <div class="card output-card">
+                <div class="card-header">
+                    <h2>Processing Result</h2>
+                    <p>Processed results will appear here dynamically.</p>
+                </div>
+                <div class="result-container">
+                    <pre id="result-output" class="empty-state">No data processed yet.</pre>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Scripts -->
+    <script src="/static/app.js"></script>
+</body>
+</html>

@@ -21,12 +21,12 @@
     });
   }
 
-  async function addToQueue(endpoint, payload) {
+  async function addToQueue(endpoint, payload, isFormData = false) {
     const database = await openDatabase();
     const transaction = database.transaction(STORE_NAME, "readwrite");
     const store = transaction.objectStore(STORE_NAME);
     await new Promise((resolve, reject) => {
-      const request = store.add({ endpoint, payload, createdAt: new Date().toISOString() });
+      const request = store.add({ endpoint, payload, isFormData, createdAt: new Date().toISOString() });
       request.onsuccess = () => resolve(request.result);
       request.onerror = () => reject(request.error);
     });
@@ -63,11 +63,33 @@
     let syncedCount = 0;
     for (const entry of entries) {
       try {
-        const response = await fetch(`/api/${entry.endpoint}`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(entry.payload),
-        });
+        let fetchOptions = {
+          method: "POST"
+        };
+        
+        if (entry.isFormData) {
+          const formData = new FormData();
+          if (entry.payload instanceof FormData) {
+            fetchOptions.body = entry.payload;
+          } else if (entry.payload instanceof Blob || entry.payload instanceof File) {
+            formData.append("receipt", entry.payload, entry.payload.name || "receipt.jpg");
+            fetchOptions.body = formData;
+          } else if (entry.payload && typeof entry.payload === "object") {
+            for (const [key, value] of Object.entries(entry.payload)) {
+              if (value instanceof Blob || value instanceof File) {
+                formData.append(key, value, value.name || `${key}.bin`);
+              } else {
+                formData.append(key, value);
+              }
+            }
+            fetchOptions.body = formData;
+          }
+        } else {
+          fetchOptions.headers = { "Content-Type": "application/json" };
+          fetchOptions.body = JSON.stringify(entry.payload);
+        }
+
+        const response = await fetch(`/api/${entry.endpoint}`, fetchOptions);
 
         if (!response.ok) {
           throw new Error("Request failed");

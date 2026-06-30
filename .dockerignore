@@ -1,0 +1,38 @@
+# Git and version control
+.git
+.gitignore
+
+# Python caching
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Environment files and secrets
+.env
+.env.*
+!.env.example
+
+# IDEs and Editors
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Virtual Environments
+venv/
+env/
+ENV/
+
+# Documentation and Tests
+docs/
+tests/
+coverage/
+.coverage
+htmlcov/
+pytest.ini
+
+# Other
+instance/
+*.sqlite3
+*.db

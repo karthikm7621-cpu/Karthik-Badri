@@ -186,9 +186,136 @@ button {
   color: var(--info);
 }
 
+.receipt-upload {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  padding: 0.95rem 1rem;
+  border-radius: 14px;
+  border: 1px dashed var(--accent);
+  cursor: pointer;
+  background: rgba(56, 189, 248, 0.12);
+  color: var(--accent);
+  font-weight: 700;
+}
+
+.receipt-upload input {
+  display: none;
+}
+
+.receipt-preview {
+  width: 100%;
+  max-height: 320px;
+  object-fit: contain;
+  border-radius: 16px;
+  border: 1px solid var(--border);
+  background: rgba(15, 23, 42, 0.7);
+}
+
+/* Resume upload spinner */
+.spinner {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: 3px solid rgba(255,255,255,0.08);
+  border-top-color: var(--accent);
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
 @media (max-width: 700px) {
   .card__header {
     flex-direction: column;
     align-items: flex-start;
   }
+}
+
+.audio-recorder {
+  display: flex;
+  flex-direction: column;
+  gap: 0.8rem;
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--border);
+}
+
+.policy-chat-history {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  max-height: 320px;
+  overflow-y: auto;
+  padding-right: 0.25rem;
+  margin-bottom: 1rem;
+}
+
+.policy-message {
+  display: inline-block;
+  max-width: 85%;
+  padding: 0.8rem 1rem;
+  border-radius: 16px;
+  line-height: 1.45;
+}
+
+.policy-message.user {
+  align-self: flex-end;
+  background: rgba(56, 189, 248, 0.2);
+  border: 1px solid rgba(56, 189, 248, 0.25);
+}
+
+.policy-message.bot {
+  align-self: flex-start;
+  background: rgba(15, 23, 42, 0.9);
+  border: 1px solid var(--border);
+}
+
+.policy-chat-form {
+  display: flex;
+  gap: 0.75rem;
+}
+
+.policy-chat-form input {
+  flex: 1;
+}
+
+.secondary-btn {
+  background: rgba(15, 23, 42, 0.9);
+  color: var(--accent);
+  border: 1px solid var(--accent);
+}
+
+.secondary-btn:active {
+  background: var(--accent);
+  color: #08101f;
+}
+
+.recording-indicator {
+  color: var(--info);
+  font-weight: bold;
+  animation: pulse 1.5s infinite;
+  text-align: center;
+}
+
+@keyframes pulse {
+  0% { opacity: 1; }
+  50% { opacity: 0.5; }
+  100% { opacity: 1; }
+}
+
+.hidden {
+  display: none !important;
+}
+
+.scanner-overlay {
+  box-shadow: inset 0 0 20px rgba(56, 189, 248, 0.8);
+  animation: scan-pulse 2s infinite alternate;
+}
+
+@keyframes scan-pulse {
+  0% { opacity: 0.5; box-shadow: inset 0 0 10px rgba(56, 189, 248, 0.5); }
+  100% { opacity: 1; box-shadow: inset 0 0 30px rgba(56, 189, 248, 0.9); }
 }

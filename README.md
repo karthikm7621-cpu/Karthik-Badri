@@ -1,83 +1,59 @@
-# 🧠 CPU-First EMS: Smart Employee Management System
+# Data Processor Platform 🚀
 
-> **A fully offline, AI-powered Employee Management System that turns chaos into structure, running entirely on your CPU.**
+[![License: AGPL v3](https://img.shields.io/badge/License-AGPL%20v3-blue.svg)](LICENSE)
+[![Contributor Covenant](https://img.shields.io/badge/Contributor%20Covenant-2.1-4baaaa.svg)](CODE_OF_CONDUCT.md)
+[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](CONTRIBUTING.md)
 
-Welcome to the **CPU-First EMS**, built for the **CPU-First Hackathon**. This project aims to revolutionize how small to medium businesses handle employee attendance, leave management, and profiles by leveraging the power of local, private, and lightweight AI models—without requiring an internet connection or expensive GPUs.
+> **[Project Purpose - e.g., Revolutionizing remote workforce management through resilient offline-first architecture.]**
 
----
+The **CPU-First Employee Management System (EMS)** is a highly robust, production-grade web application built to process complex data payloads efficiently. Designed with a local-first philosophy, it allows teams to track attendance, queue submissions, and manage leave requests seamlessly—even in completely disconnected environments. 
 
-## 🚀 The Hackathon Angle: Unstructured Chaos to Structured Data
+Originally a local Streamlit application, the platform has been completely re-architected into a scalable Flask API with a stunning, glassmorphism-styled frontend. It leverages robust client-side storage to ensure zero data loss during network outages, synchronizing effortlessly with the backend once connectivity is restored.
 
-The core mission of our project is to demonstrate that advanced AI data extraction can be done **100% offline, running on standard CPU hardware**. We eliminate reliance on cloud APIs and expensive GPU clusters. 
+**Target Audience:** [Who is this for? e.g., Distributed teams, field workers, or organizations operating in low-bandwidth environments.]
 
-How do we turn unstructured input into structured data?
-1. **Smart Leave Parser**: Employees can simply type a messy message (e.g., *"I need to take off next Tuesday because I'm sick"*) or upload an audio voice note. Using **llama.cpp** (for text intent extraction) and **Whisper.cpp** (for offline audio transcription), we extract the exact intent, requested dates, and reason, converting it into a clean JSON payload that gets saved directly to our database.
-2. **Smart Attendance OCR**: Employees upload an image of a handwritten timesheet or ID badge. We process this using a lightweight **ONNX Runtime (CPU)** vision model to extract the timestamp and employee ID, converting the visual unstructured data into structured, queryable attendance logs.
+## 🌟 Core Features
+- **Secure REST API:** Built with Flask, featuring comprehensive logging and error handling.
+- **Premium Frontend:** Vanilla JS with Fetch API integration for dynamic DOM updates, styled with CSS glassmorphism.
+- **High-Performance Server:** Powered by Gunicorn with multi-threaded workers.
+- **Production-Ready Docker:** Hardened, multi-stage, non-root Docker build.
 
----
+## 🏗 Architecture Overview
 
-## 🏗 Architecture & Tech Stack
+```mermaid
+graph TD;
+    Client[Web Browser/Client] -->|JSON POST| Nginx[Nginx/Reverse Proxy]
+    Nginx -->|WSGI| Gunicorn[Gunicorn Server]
+    Gunicorn --> Flask[Flask Application]
+    Flask --> Engine[Data Processing Engine]
+```
 
-Our stack is designed to be lightweight, fully open-source, and extremely easy to deploy on any standard hardware.
+## 🚀 Quick Start
 
-*   **Frontend**: HTML5, CSS3, Vanilla JavaScript (No heavy frameworks, fast and responsive).
-*   **Backend**: Python with Flask (Lightweight, easy to interface with local AI runtimes).
-*   **Database**: SQLite (Serverless, single-file, 100% offline-first).
-*   **AI Inference (CPU-Only)**:
-    *   **Text Processing**: [llama.cpp](https://github.com/ggerganov/llama.cpp) (via Python bindings / Ollama) running a quantized small LLM (e.g., Llama 3 8B Q4 or Phi-3).
-    *   **Audio Transcription**: [Whisper.cpp](https://github.com/ggerganov/whisper.cpp) for fast, CPU-bound voice-to-text.
-    *   **Computer Vision / OCR**: [ONNX Runtime (CPU)](https://onnxruntime.ai/) running a lightweight OCR model (e.g., EasyOCR or a quantized custom model).
+### 1. Using Docker (Recommended)
+```bash
+docker build -t data-processor .
+docker run -p 8000:8000 --env-file .env.example data-processor
+```
+Visit `http://localhost:8000`.
 
----
+### 2. Manual Installation
+```bash
+python -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
+gunicorn -w 4 --threads 2 -b 0.0.0.0:8000 wsgi:app
+```
 
-## 🔌 How to Run (100% Offline)
+## 📖 Documentation
+- [User Manual](USER_MANUAL.md) - For detailed installation and troubleshooting.
+- [Changelog](CHANGELOG.md) - See what's new.
 
-To prove this works offline, we encourage you to **turn off your Wi-Fi** before running the application!
+## 🤝 Contributing
+We welcome all contributions! Please read our [Contributing Guidelines](CONTRIBUTING.md) and our [Code of Conduct](CODE_OF_CONDUCT.md) before submitting a Pull Request.
 
-### Prerequisites
-*   Python 3.10+
-*   C/C++ Compiler (for compiling llama.cpp/whisper.cpp if building from source)
-*   At least 8GB of RAM (16GB recommended for running the local LLM smoothly).
+- If you are an AI agent, please review the [Autonomous Agents Guidelines](AGENTS.md).
+- To report a security vulnerability, please see our [Security Policy](SECURITY.md).
 
-### Setup Instructions
-
-1. **Clone the repository**
-   ```bash
-   git clone https://github.com/your-org/cpu-first-ems.git
-   cd cpu-first-ems
-   ```
-
-2. **Download the offline AI models**
-   *(Note: For the hackathon, we provide a script to download the required `.gguf` and `.onnx` model files before you go completely offline).*
-   ```bash
-   ./scripts/download_models.sh
-   ```
-
-3. **Set up the Python Virtual Environment**
-   ```bash
-   python -m venv venv
-   source venv/bin/activate  # On Windows: venv\Scripts\activate
-   pip install -r requirements.txt
-   ```
-
-4. **Initialize the local database**
-   ```bash
-   flask db init
-   ```
-
-5. **Start the offline server**
-   ```bash
-   flask run --host=0.0.0.0 --port=5000
-   ```
-
-6. **Access the application**
-   Open your browser and navigate to `http://localhost:5000`.
-
----
-
-## ⚖️ License
-
-This project is proudly open-source and released under the **GNU General Public License v3.0 (GPLv3)**. 
-By using a strong copyleft license, we ensure that any derivative works based on our fully offline, CPU-first architecture remain free and open for the community.
-
-See the [LICENSE](LICENSE) file for more details.
+## 📄 License
+This project is licensed under the AGPLv3 License - see the [LICENSE](LICENSE) file for details.

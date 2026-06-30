@@ -1,0 +1,32 @@
+[project]
+name = "data-processor"
+version = "1.0.0"
+description = "[One-line summary, e.g., An offline-first, production-grade Employee Management System powered by Flask.]"
+authors = [
+    {name = "Team ATK", email = "team-atk@example.com"}
+]
+readme = "README.md"
+requires-python = ">=3.11"
+keywords = ["ems", "flask", "offline-first", "employee-management", "service-worker"]
+
+[tool.vulture]
+min_confidence = 80
+paths = ["."]
+sort_by_size = true
+
+[tool.pylint.messages_control]
+disable = [
+    "C0111", # missing-docstring
+    "W0511", # fixme
+]
+
+[tool.ruff]
+target-version = "py311"
+line-length = 100
+
+[tool.pytest.ini_options]
+minversion = "6.0"
+addopts = "-ra -q"
+testpaths = [
+    "tests",
+]

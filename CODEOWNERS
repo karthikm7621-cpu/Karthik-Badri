@@ -1,0 +1,25 @@
+# Default ownership
+* @[GitLab Maintainer Username]
+
+# Backend
+/app.py @[GitLab Backend Owner Username]
+/requirements.txt @[GitLab Backend Owner Username]
+/data-processor/ @[GitLab Backend Owner Username]
+
+# Frontend
+/static/ @[GitLab Frontend Owner Username]
+
+# Documentation and governance
+/README.md @[GitLab Maintainer Username]
+/CONTRIBUTING.md @[GitLab Maintainer Username]
+/CODE_OF_CONDUCT.md @[GitLab Maintainer Username]
+/SECURITY.md @[GitLab Security Owner Username]
+/SUPPORT.md @[GitLab Maintainer Username]
+/GOVERNANCE.md @[GitLab Maintainer Username]
+
+# Container and deployment files
+/Dockerfile @[GitLab DevOps Owner Username]
+/.dockerignore @[GitLab DevOps Owner Username]
+
+# CI/CD ownership
+/.gitlab-ci.yml @[GitLab DevOps Owner Username] @[GitLab Security Owner Username]

@@ -3,22 +3,151 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <!-- Primary Meta Tags -->
+  <title>CPU-First EMS | Offline-First Employee Management</title>
+  <meta name="title" content="CPU-First EMS | Offline-First Employee Management">
+  <meta name="description" content="[Project Purpose - e.g., A resilient, offline-first Employee Management System designed for high-performance data processing and queue management.]">
+  <meta name="keywords" content="EMS, Employee Management, Offline-first, Flask, Data Processor">
   <meta name="theme-color" content="#0f172a">
+  
+  <!-- Open Graph / Facebook -->
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="[Production URL, e.g., https://ems.yourdomain.com/]">
+  <meta property="og:title" content="CPU-First EMS">
+  <meta property="og:description" content="[Project Purpose - e.g., A resilient, offline-first Employee Management System designed for high-performance data processing and queue management.]">
+  <meta property="og:image" content="/static/preview.png">
+
+  <!-- Twitter -->
+  <meta property="twitter:card" content="summary_large_image">
+  <meta property="twitter:url" content="[Production URL, e.g., https://ems.yourdomain.com/]">
+  <meta property="twitter:title" content="CPU-First EMS">
+  <meta property="twitter:description" content="[Project Purpose - e.g., A resilient, offline-first Employee Management System designed for high-performance data processing and queue management.]">
+  <meta property="twitter:image" content="/static/preview.png">
+
+  <!-- Assets -->
   <link rel="manifest" href="/static/manifest.json">
   <link rel="stylesheet" href="/static/styles.css">
-  <title>CPU-First EMS</title>
 </head>
 <body>
   <header class="hero">
     <div class="hero__content">
-      <p class="eyebrow">Offline-first employee management</p>
-      <h1>CPU-First EMS</h1>
-      <p>Track attendance, queue submissions, and manage leave requests even when the network is unavailable.</p>
+      <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+        <div>
+          <p class="eyebrow">Offline-first employee management</p>
+          <h1>CPU-First EMS</h1>
+          <p>Track attendance, queue submissions, and manage leave requests even when the network is unavailable.</p>
+        </div>
+        <button id="logout-btn" class="secondary-btn hidden" style="width: auto;">Logout</button>
+      </div>
       <div class="hero__status" id="connection-status" role="status">Checking connectivity…</div>
     </div>
   </header>
 
-  <main class="layout">
+  <!-- Auth View -->
+  <main class="layout" id="auth-view">
+    <section class="card" id="login-section">
+      <div class="card__header">
+        <div>
+          <h2>Login</h2>
+          <p>Access your EMS dashboard.</p>
+        </div>
+      </div>
+      <form id="login-form" class="form" novalidate>
+        <label class="field">
+          <span>Username</span>
+          <input type="text" id="login-username" name="username" required>
+        </label>
+        <label class="field">
+          <span>Password</span>
+          <input type="password" id="login-password" name="password" required>
+        </label>
+        <button type="submit">Login</button>
+      </form>
+      <p class="feedback" id="login-feedback" aria-live="polite"></p>
+      <p style="margin-top: 1rem; text-align: center;">Don't have an account? <a href="#" id="show-register" style="color: var(--accent);">Register</a></p>
+    </section>
+
+    <section class="card hidden" id="register-section">
+      <div class="card__header">
+        <div>
+          <h2>Register</h2>
+          <p>Create a new employee account.</p>
+        </div>
+      </div>
+      <form id="register-form" class="form" novalidate>
+        <label class="field">
+          <span>Username</span>
+          <input type="text" id="register-username" name="username" required>
+        </label>
+        <label class="field">
+          <span>Password</span>
+          <input type="password" id="register-password" name="password" required>
+        </label>
+        <label class="field">
+          <span>Stream</span>
+          <select id="register-stream" name="stream" required>
+            <option value="Tester">Tester</option>
+            <option value="Frontend">Frontend</option>
+            <option value="Backend">Backend</option>
+            <option value="AI & DS">AI & DS</option>
+          </select>
+        </label>
+        <button type="submit">Register</button>
+      </form>
+      <p class="feedback" id="register-feedback" aria-live="polite"></p>
+      <p style="margin-top: 1rem; text-align: center;">Already have an account? <a href="#" id="show-login" style="color: var(--accent);">Login</a></p>
+    </section>
+  </main>
+
+  <!-- Dashboard View (Hidden by default) -->
+  <main class="layout hidden" id="dashboard-view">
+    
+    <!-- Admin Panel (Hidden by default) -->
+    <section class="card hidden" id="admin-panel">
+      <div class="card__header">
+        <div>
+          <h2>Admin Panel</h2>
+          <p>Manage users and permissions (Owners Only).</p>
+        </div>
+      </div>
+      <div id="pending-users-container">
+        <h3>Pending Approvals</h3>
+        <ul class="employee-list" id="pending-users-list">
+          <li style="justify-content: center; color: var(--muted);">No pending users</li>
+        </ul>
+      </div>
+      
+      <div id="delegation-container" class="hidden" style="margin-top: 1.5rem; padding-top: 1.5rem; border-top: 1px solid var(--border);">
+        <h3>Delegate Ownership</h3>
+        <form id="delegate-form" class="form" novalidate style="margin-top: 1rem;">
+          <label class="field">
+            <span>Select Active User</span>
+            <select id="delegate-user-select" required></select>
+          </label>
+          <button type="submit" class="secondary-btn">Grant Delegated Owner</button>
+        </form>
+        <p class="feedback" id="delegate-feedback" aria-live="polite"></p>
+      </div>
+      <div id="instant-hire-container" style="margin-top: 1.5rem; padding-top: 1.5rem; border-top: 1px solid var(--border);">
+        <h3>Instant Hire: Resume Parsing</h3>
+        <p style="margin: 0.25rem 0 0; color: var(--muted);">Upload a resume (PDF/DOC/DOCX). If offline, the file will be queued securely.</p>
+        <form id="resume-form" class="form" novalidate style="margin-top: 1rem;">
+          <label class="field">
+            <span>Resume File</span>
+            <input type="file" id="resume-upload" accept=".pdf,.doc,.docx">
+          </label>
+
+          <div style="display: flex; gap: 0.6rem; align-items: center;">
+            <button type="submit">Process Resume</button>
+            <div id="resume-spinner" class="spinner hidden" aria-hidden="true" title="Processing"></div>
+          </div>
+        </form>
+        <p class="feedback" id="resume-feedback" aria-live="polite"></p>
+      </div>
+    </section>
+
+    <!-- Existing Dashboard Elements -->
     <section class="card">
       <div class="card__header">
         <div>
@@ -51,6 +180,16 @@
           <textarea id="attendance-notes" name="notes" rows="4" placeholder="Optional notes for the shift"></textarea>
         </label>
         <button type="submit">Save Attendance</button>
+        
+        <div class="biometric-section" style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--border);">
+          <button type="button" id="start-biometric-btn" class="secondary-btn">Log Attendance via Face</button>
+          <div id="biometric-container" class="hidden" style="margin-top: 1rem; position: relative;">
+            <video id="webcam" autoplay playsinline style="width: 100%; border-radius: 16px; border: 2px solid var(--accent);"></video>
+            <div class="scanner-overlay" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: 4px solid rgba(56, 189, 248, 0.5); border-radius: 16px; box-sizing: border-box; pointer-events: none;"></div>
+            <button type="button" id="capture-biometric-btn" style="margin-top: 0.8rem;">Verify Face</button>
+            <canvas id="biometric-canvas" class="hidden"></canvas>
+          </div>
+        </div>
       </form>
       <p class="feedback" id="attendance-feedback" aria-live="polite"></p>
     </section>
@@ -72,8 +211,75 @@
           <textarea id="leave-request" name="request" rows="6" placeholder="Describe the leave details, dates, and reason"></textarea>
         </label>
         <button type="submit">Queue Leave Request</button>
+        
+        <div class="audio-recorder">
+          <button type="button" id="record-btn" class="secondary-btn">Hold to Record Voice Note</button>
+          <span id="recording-indicator" class="recording-indicator hidden">Recording...</span>
+          <audio id="audio-playback" controls class="hidden"></audio>
+          <button type="button" id="submit-audio-btn" class="hidden">Submit Voice Note</button>
+        </div>
       </form>
       <p class="feedback" id="leave-feedback" aria-live="polite"></p>
+    </section>
+
+    <section class="card">
+      <div class="card__header">
+        <div>
+          <h2>Expense Reimbursement</h2>
+          <p>Snap a receipt and queue it for OCR-based expense parsing.</p>
+        </div>
+      </div>
+      <form id="receipt-form" class="form" novalidate>
+        <label class="field">
+          <span>Employee</span>
+          <select id="receipt-employee" name="employee"></select>
+        </label>
+        <label class="field">
+          <span>Receipt Image</span>
+          <label class="receipt-upload">
+            <input id="receipt-file-input" type="file" accept="image/*" capture="environment">
+            <span>Snap Receipt</span>
+          </label>
+        </label>
+        <img id="receipt-preview" class="receipt-preview hidden" alt="Receipt preview">
+        <button type="button" id="submit-expense-btn">Submit Expense</button>
+      </form>
+      <p class="feedback" id="receipt-feedback" aria-live="polite"></p>
+    </section>
+
+    <section class="card">
+      <div class="card__header">
+        <div>
+          <h2>HR Support Helpdesk</h2>
+          <p>Explain your issue in any language (e.g., English, Hindi, Telugu).</p>
+        </div>
+      </div>
+      <form id="hr-form" class="form" novalidate>
+        <label class="field">
+          <span>Employee</span>
+          <select id="hr-employee" name="employee" required></select>
+        </label>
+        <label class="field">
+          <span>Describe Your Issue</span>
+          <textarea id="hr-request" name="raw_text" rows="6" placeholder="Type your HR issue here in your native language..." required></textarea>
+        </label>
+        <button type="submit">Submit Ticket</button>
+      </form>
+      <p class="feedback" id="hr-feedback" aria-live="polite"></p>
+    </section>
+
+    <section class="card">
+      <div class="card__header">
+        <div>
+          <h2>Policy Chatbot</h2>
+          <p>Ask policy questions and get context-aware answers from the offline handbook.</p>
+        </div>
+      </div>
+      <div id="policy-chat-history" class="policy-chat-history" aria-live="polite"></div>
+      <form id="policy-chat-form" class="policy-chat-form" novalidate>
+        <input id="policy-chat-input" type="text" placeholder="Ask about leave, remote work, or benefits..." autocomplete="off">
+        <button type="submit">Send</button>
+      </form>
     </section>
   </main>
 

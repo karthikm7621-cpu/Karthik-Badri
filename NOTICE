@@ -1,0 +1,13 @@
+Team ATK
+
+Copyright [Year] [Copyright Holder]
+
+This product may include software developed by third parties and distributed under their respective licenses.
+
+The project source code is licensed under the license described in the LICENSE file.
+
+Third-party dependencies are managed through Python package metadata and JavaScript/browser assets included in the repository. Contributors must ensure that any added dependency is compatible with the project license and suitable for redistribution.
+
+For licensing questions, contact:
+
+[Maintainer Email]

@@ -1,0 +1,20 @@
+[run]
+branch = True
+source = .
+omit =
+    venv/*
+    env/*
+    tests/*
+    *test.py
+    conftest.py
+    wsgi.py
+    */__init__.py
+
+[report]
+show_missing = True
+skip_covered = False
+exclude_lines =
+    pragma: no cover
+    def __repr__
+    if self.debug:
+    if __name__ == .__main__:
