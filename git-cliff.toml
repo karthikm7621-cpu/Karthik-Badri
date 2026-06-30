@@ -5,8 +5,8 @@ body = """
     ## {{ group | upper_first }}
     {% for commit in commits %}
         - {{ commit.message | split(pat="\n") | first | upper_first }} ({{ commit.id | truncate(length=7, end="") }})
-    {% end.for %}
-{% end.for %}
+    {% endfor %}
+{% endfor %}
 """
 trim = true
 
