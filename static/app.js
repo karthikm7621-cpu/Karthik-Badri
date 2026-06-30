@@ -8,20 +8,7 @@
     { id: "EMP-103", name: "Jules Ortiz" },
   ];
 
-  // Auth UI
-  const authView = document.getElementById("auth-view");
-  const dashboardView = document.getElementById("dashboard-view");
-  const loginSection = document.getElementById("login-section");
-  const registerSection = document.getElementById("register-section");
-  
-  const showRegisterLink = document.getElementById("show-register");
-  const showLoginLink = document.getElementById("show-login");
-  const loginForm = document.getElementById("login-form");
-  const registerForm = document.getElementById("register-form");
-  const logoutBtn = document.getElementById("logout-btn");
-  
-  const loginFeedback = document.getElementById("login-feedback");
-  const registerFeedback = document.getElementById("register-feedback");
+  // Auth UI removed
 
   // Admin UI
   const adminPanel = document.getElementById("admin-panel");
@@ -164,26 +151,16 @@
 
   // Auth Logic
   function checkAuth() {
-    currentUsername = localStorage.getItem("ems_username");
-    currentUserRole = localStorage.getItem("ems_role");
-
-    if (currentUsername && currentUserRole) {
-      showDashboard();
-    } else {
-      showAuth();
-    }
-  }
-
-  function showAuth() {
-    authView.classList.remove("hidden");
-    dashboardView.classList.add("hidden");
-    logoutBtn.classList.add("hidden");
+    currentUsername = "Anonymous";
+    currentUserRole = "Main Owner";
+    showDashboard();
   }
 
   function showDashboard() {
-    authView.classList.add("hidden");
-    dashboardView.classList.remove("hidden");
-    logoutBtn.classList.remove("hidden");
+    const dashboardView = document.getElementById("dashboard-view");
+    if (dashboardView) {
+      dashboardView.classList.remove("hidden");
+    }
 
     renderEmployees();
 
@@ -201,59 +178,7 @@
     }
   }
 
-  async function handleLogin(event) {
-    event.preventDefault();
-    if (!navigator.onLine) {
-      setFeedback(loginFeedback, "Authentication requires a network connection. Please connect to the local server.", "info");
-      return;
-    }
-
-    const username = document.getElementById("login-username").value.trim();
-    const password = document.getElementById("login-password").value.trim();
-
-    try {
-      const response = await sendPayload("login", { username, password });
-      const user = response.user || response;
-      localStorage.setItem("ems_username", user.username || username);
-      localStorage.setItem("ems_role", user.role || "Employee");
-      checkAuth();
-      loginForm.reset();
-    } catch (err) {
-      setFeedback(loginFeedback, "Login failed. Please check credentials.", "info");
-      console.warn(err);
-    }
-  }
-
-  async function handleRegister(event) {
-    event.preventDefault();
-    if (!navigator.onLine) {
-      setFeedback(registerFeedback, "Authentication requires a network connection. Please connect to the local server.", "info");
-      return;
-    }
-
-    const username = document.getElementById("register-username").value.trim();
-    const password = document.getElementById("register-password").value.trim();
-    const stream = document.getElementById("register-stream").value;
-
-    try {
-      await sendPayload("register", { username, password, stream });
-      setFeedback(registerFeedback, "Registration successful! Please wait for owner approval.", "success");
-      registerForm.reset();
-      setTimeout(() => {
-        registerSection.classList.add("hidden");
-        loginSection.classList.remove("hidden");
-      }, 2000);
-    } catch (err) {
-      setFeedback(registerFeedback, "Registration failed.", "info");
-      console.warn(err);
-    }
-  }
-
-  function handleLogout() {
-    localStorage.removeItem("ems_username");
-    localStorage.removeItem("ems_role");
-    checkAuth();
-  }
+  // Auth Logic Removed
 
   // Admin Logic
   async function loadAdminData() {
@@ -710,22 +635,7 @@
     await updateQueueCount();
     void initAudioRecorder();
 
-    // Event Listeners
-    showRegisterLink.addEventListener("click", (e) => {
-      e.preventDefault();
-      loginSection.classList.add("hidden");
-      registerSection.classList.remove("hidden");
-    });
-    
-    showLoginLink.addEventListener("click", (e) => {
-      e.preventDefault();
-      registerSection.classList.add("hidden");
-      loginSection.classList.remove("hidden");
-    });
-
-    loginForm.addEventListener("submit", handleLogin);
-    registerForm.addEventListener("submit", handleRegister);
-    logoutBtn.addEventListener("click", handleLogout);
+    // Auth Event Listeners Removed
     
     delegateForm.addEventListener("submit", handleDelegation);
     attendanceForm.addEventListener("submit", handleAttendanceSubmission);

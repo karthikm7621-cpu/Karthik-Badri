@@ -38,70 +38,13 @@
           <h1>CPU-First EMS</h1>
           <p>Track attendance, queue submissions, and manage leave requests even when the network is unavailable.</p>
         </div>
-        <button id="logout-btn" class="secondary-btn hidden" style="width: auto;">Logout</button>
       </div>
       <div class="hero__status" id="connection-status" role="status">Checking connectivity…</div>
     </div>
   </header>
 
-  <!-- Auth View -->
-  <main class="layout" id="auth-view">
-    <section class="card" id="login-section">
-      <div class="card__header">
-        <div>
-          <h2>Login</h2>
-          <p>Access your EMS dashboard.</p>
-        </div>
-      </div>
-      <form id="login-form" class="form" novalidate>
-        <label class="field">
-          <span>Username</span>
-          <input type="text" id="login-username" name="username" required>
-        </label>
-        <label class="field">
-          <span>Password</span>
-          <input type="password" id="login-password" name="password" required>
-        </label>
-        <button type="submit">Login</button>
-      </form>
-      <p class="feedback" id="login-feedback" aria-live="polite"></p>
-      <p style="margin-top: 1rem; text-align: center;">Don't have an account? <a href="#" id="show-register" style="color: var(--accent);">Register</a></p>
-    </section>
-
-    <section class="card hidden" id="register-section">
-      <div class="card__header">
-        <div>
-          <h2>Register</h2>
-          <p>Create a new employee account.</p>
-        </div>
-      </div>
-      <form id="register-form" class="form" novalidate>
-        <label class="field">
-          <span>Username</span>
-          <input type="text" id="register-username" name="username" required>
-        </label>
-        <label class="field">
-          <span>Password</span>
-          <input type="password" id="register-password" name="password" required>
-        </label>
-        <label class="field">
-          <span>Stream</span>
-          <select id="register-stream" name="stream" required>
-            <option value="Tester">Tester</option>
-            <option value="Frontend">Frontend</option>
-            <option value="Backend">Backend</option>
-            <option value="AI & DS">AI & DS</option>
-          </select>
-        </label>
-        <button type="submit">Register</button>
-      </form>
-      <p class="feedback" id="register-feedback" aria-live="polite"></p>
-      <p style="margin-top: 1rem; text-align: center;">Already have an account? <a href="#" id="show-login" style="color: var(--accent);">Login</a></p>
-    </section>
-  </main>
-
-  <!-- Dashboard View (Hidden by default) -->
-  <main class="layout hidden" id="dashboard-view">
+  <!-- Dashboard View -->
+  <main class="layout" id="dashboard-view">
     
     <!-- Admin Panel (Hidden by default) -->
     <section class="card hidden" id="admin-panel">

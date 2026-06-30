@@ -473,20 +473,7 @@ def get_request_data() -> Dict[str, Any]:
 
 
 def resolve_authenticated_user() -> Any:
-    payload = get_request_data()
-    username = (
-        payload.get("username") or request.headers.get("X-Username", "")
-    ).strip()
-    password = (
-        payload.get("password") or request.headers.get("X-Password", "")
-    ).strip()
-    if not username or not password:
-        return None
-
-    user = User.query.filter_by(username=username).first()
-    if not user or not check_password_hash(user.password_hash, password):
-        return None
-    return user
+    return User.query.filter_by(username="Owner1").first()
 
 
 def is_owner(user: Any) -> bool:
@@ -913,74 +900,7 @@ def submit_hr_ticket() -> Any:
     )
 
 
-@app.route("/api/register", methods=["POST"])
-def register_user() -> Any:
-    payload = get_request_data()
-    username = (payload.get("username") or "").strip()
-    password = (payload.get("password") or "").strip()
-    stream = (payload.get("stream") or "").strip()
-
-    if not username or not password:
-        return (
-            jsonify(
-                {"success": False, "message": "Username and password are required."}
-            ),
-            400,
-        )
-
-    if User.query.filter_by(username=username).first():
-        return jsonify({"success": False, "message": "Username already exists."}), 409
-
-    user = User(
-        username=username,
-        password_hash=generate_password_hash(password),
-        role="Employee",
-        status="Pending",
-        stream=stream or None,
-    )
-    db.session.add(user)
-    db.session.commit()
-
-    return jsonify(
-        {
-            "success": True,
-            "message": "Registration submitted for approval.",
-            "user": user.to_dict(),
-        }
-    )
-
-
-@app.route("/api/login", methods=["POST"])
-def login_user() -> Any:
-    payload = get_request_data()
-    username = (payload.get("username") or "").strip()
-    password = (payload.get("password") or "").strip()
-
-    if not username or not password:
-        return (
-            jsonify(
-                {"success": False, "message": "Username and password are required."}
-            ),
-            400,
-        )
-
-    user = User.query.filter_by(username=username).first()
-    if not user or not check_password_hash(user.password_hash, password):
-        return jsonify({"success": False, "message": "Invalid credentials."}), 401
-
-    return jsonify(
-        {
-            "success": True,
-            "message": "Login successful.",
-            "user": {
-                "id": user.id,
-                "username": user.username,
-                "role": user.role,
-                "status": user.status,
-                "stream": user.stream,
-            },
-        }
-    )
+# Auth endpoints removed
 
 
 @app.route("/api/pending-users", methods=["GET"])
