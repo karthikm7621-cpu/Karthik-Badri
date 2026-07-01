@@ -16,6 +16,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 WORKDIR /build
 
 # Copy requirements file first for layer caching
+# CACHE BUST: 1
 COPY requirements.txt ml-requirements.txt ./
 
 # Install dependencies into a local user directory
