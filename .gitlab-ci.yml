@@ -125,7 +125,7 @@ dependency_audit:
   image: python:3.11-slim
   script:
     - pip install pip-audit
-    - pip-audit -r requirements.txt -r ml-requirements.txt --no-deps --format json --output pip-audit-report.json; $global:LASTEXITCODE = 0
+    - pip-audit -r requirements.txt -r ml-requirements.txt --no-deps --disable-pip --progress-spinner off --format json --output pip-audit-report.json; $global:LASTEXITCODE = 0
     - if (-not (Test-Path "pip-audit-report.json")) { Set-Content -Path "pip-audit-report.json" -Value "[]" }
   artifacts:
     when: always
