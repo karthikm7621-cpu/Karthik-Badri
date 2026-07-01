@@ -1,3 +1,7 @@
+default:
+  before_script:
+    - $env:PATH = "C:\Users\karth\AppData\Local\Programs\Python\Python313\;C:\Users\karth\AppData\Local\Programs\Python\Python313\Scripts\;C:\Program Files\nodejs\;" + $env:PATH
+
 variables:
   PIP_CACHE_DIR: "$CI_PROJECT_DIR/.cache/pip"
   NPM_CONFIG_CACHE: "$CI_PROJECT_DIR/.cache/npm"
