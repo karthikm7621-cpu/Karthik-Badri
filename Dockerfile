@@ -16,12 +16,13 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 WORKDIR /build
 
 # Copy requirements file first for layer caching
-# CACHE BUST: 1
+# CACHE BUST: 2
 COPY requirements.txt ml-requirements.txt ./
 
 # Install dependencies into a local user directory
 # We install build-essential just in case, and use no-cache-dir
-RUN pip install --user --no-cache-dir --default-timeout=100 -r requirements.txt -r ml-requirements.txt
+# Limit parallel compilation to prevent OOM (used over 8GB) on Render
+RUN MAKEFLAGS="-j 1" CMAKE_BUILD_PARALLEL_LEVEL=1 pip install --user --no-cache-dir --default-timeout=100 -r requirements.txt -r ml-requirements.txt
 
 # ---------------------------------------------------------
 # STAGE 2: Production
