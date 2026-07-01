@@ -112,14 +112,16 @@ security_gitleaks:
     name: zricethezav/gitleaks:latest
     entrypoint: [""]
   script:
-    - gitleaks detect --source . -v
+    - Invoke-WebRequest -Uri "https://github.com/gitleaks/gitleaks/releases/download/v8.18.2/gitleaks_8.18.2_windows_x64.zip" -OutFile "gitleaks.zip"
+    - Expand-Archive -Path "gitleaks.zip" -DestinationPath "."
+    - .\gitleaks.exe detect --source . -v
 
 dependency_audit:
   stage: dependency-audit
   image: python:3.11-slim
   script:
     - pip install pip-audit
-    - pip-audit -r requirements.txt -r ml-requirements.txt --no-deps --format json --output pip-audit-report.json || true
+    - pip-audit -r requirements.txt -r ml-requirements.txt --no-deps --format json --output pip-audit-report.json; $global:LASTEXITCODE = 0
   artifacts:
     when: always
     expire_in: 14 days
@@ -183,7 +185,7 @@ build:
     DOCKER_HOST: tcp://docker:2375
     DOCKER_TLS_CERTDIR: ""
   script:
-    - docker pull $CI_REGISTRY_IMAGE:latest || true
+    - docker pull $CI_REGISTRY_IMAGE:latest; $global:LASTEXITCODE = 0
     - docker build --cache-from $CI_REGISTRY_IMAGE:latest -t "$CI_REGISTRY_IMAGE:$CI_COMMIT_SHA" .
     - docker tag "$CI_REGISTRY_IMAGE:$CI_COMMIT_SHA" "$CI_REGISTRY_IMAGE:latest"
   rules:
@@ -195,7 +197,9 @@ changelog:
     name: orhunp/git-cliff:latest
     entrypoint: [""]
   script:
-    - git-cliff --unreleased --prepend CHANGELOG.md
+    - Invoke-WebRequest -Uri "https://github.com/orhun/git-cliff/releases/download/v2.2.2/git-cliff-2.2.2-x86_64-pc-windows-msvc.zip" -OutFile "git-cliff.zip"
+    - Expand-Archive -Path "git-cliff.zip" -DestinationPath "."
+    - .\git-cliff-2.2.2-x86_64-pc-windows-msvc\git-cliff.exe --unreleased --prepend CHANGELOG.md
   rules:
     - if: $CI_COMMIT_TAG
 
