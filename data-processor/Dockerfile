@@ -22,7 +22,7 @@ USER appuser
 WORKDIR /app
 
 # Copy installed dependencies from builder
-COPY --from=builder /root/.local /home/appuser/.local
+COPY --chown=appuser:appgroup --from=builder /root/.local /home/appuser/.local
 
 # Update PATH to include the installed binaries
 ENV PATH=/home/appuser/.local/bin:$PATH

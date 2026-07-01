@@ -36,10 +36,11 @@ RUN groupadd -r appgroup && useradd -r -g appgroup -m appuser
 WORKDIR /app
 
 # Copy installed dependencies from the builder stage
-COPY --from=builder /root/.local /home/appuser/.local
+COPY --chown=appuser:appgroup --from=builder /root/.local /home/appuser/.local
 
 # Add local bin to PATH
 ENV PATH=/home/appuser/.local/bin:$PATH
+ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
 
 # Copy the application code and set ownership
